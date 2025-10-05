@@ -4,13 +4,14 @@ using Microsoft.AspNetCore.Mvc;
 using NullOps.DataContract;
 using NullOps.DataContract.Request.Auth;
 using NullOps.DataContract.Response.Auth;
+using NullOps.Extensions;
 using NullOps.Services.Users;
 
 namespace NullOps.Controllers;
 
 [Controller]
 [Route("/api/v1/auth")]
-public class AuthController(UserLoginService userLoginService) : ControllerBase
+public class AuthController(UserLoginService userLoginService) : Controller
 {
     [Authorize]
     [HttpGet("status")]
@@ -29,6 +30,20 @@ public class AuthController(UserLoginService userLoginService) : ControllerBase
         
         var token = await userLoginService.LoginAsync(request.Username, request.Password, cancellationToken);
 
+        return BaseResponse<LoginResponse>
+            .CreateSuccessful()
+            .WithData(new LoginResponse
+            {
+                Token = token
+            });
+    }
+
+    [Authorize]
+    [HttpPost("refresh")]
+    public async Task<BaseResponse<LoginResponse>> RefreshAsync(CancellationToken cancellationToken)
+    {
+        var token = await userLoginService.UpdateTokenAsync(User.GetUserId(), cancellationToken);
+        
         return BaseResponse<LoginResponse>
             .CreateSuccessful()
             .WithData(new LoginResponse

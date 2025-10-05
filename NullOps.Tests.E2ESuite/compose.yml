@@ -1,0 +1,50 @@
+﻿services:
+  pgsql:
+    image: postgres
+    restart: unless-stopped
+    shm_size: 128mb
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: nullops
+    healthcheck:
+      test: >
+        sh -c "
+          pg_isready -U \$${POSTGRES_USER} -d postgres >/dev/null 2>&1 &&
+          psql -U \$${POSTGRES_USER} -d postgres -tAc \"SELECT 1 FROM pg_database WHERE datname='nullops';\" | grep -q 1
+        "
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+      
+  nullops:
+    build:
+      dockerfile: NullOps.Dockerfile
+      context: ../
+    depends_on:
+      pgsql:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      NOPS_API_PORT: "7000"
+      NOPS_DATABASE_CONNECTION_STRING: "Host=pgsql;Database=nullops;Username=root;Password=root;"
+    healthcheck:
+      test: >
+        sh -c "
+          curl -f http://localhost:7000/api/v1/health/ping >/dev/null 2>&1
+        "
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+      
+  nullops-testsuite:
+    build:
+      dockerfile: E2ESuite.Dockerfile
+      context: ../
+    depends_on:
+      nullops:
+        condition: service_healthy
+    environment:
+      E2ESUITE_URL: "http://nullops:7000"

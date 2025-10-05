@@ -25,4 +25,13 @@ startupLogger.Information("Initialized successfully, API will now serve requests
 
 app.UseMiddleware<ExceptionHandlerMiddleware>();
 app.MapControllers();
+
+if (app.Environment.IsDevelopment())
+{
+    startupLogger.Fatal("WARNING! You are running in development mode!");
+    startupLogger.Fatal("WARNING! Development mode will allow ANYONE to reset the database.");
+    
+    app.UseSwagger();
+}
+
 app.Run();

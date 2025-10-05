@@ -8,12 +8,12 @@ namespace NullOps.Services.Seeding.Seeders;
 
 public class SuperAdminSeederService(IUserPasswordHasher userPasswordHasher, ILogger<SuperAdminSeederService> logger) : ISeeder
 {
-    private const string SuperAdmin = "admin";
+    public const string SuperAdminCredentials = "admin";
     
     /// <inheritdoc />
     public async Task<bool> IsSeedingRequired(DatabaseContext context)
     {
-        return !await context.Users.AnyAsync(x => x.Username == SuperAdmin);
+        return !await context.Users.AnyAsync(x => x.Username == SuperAdminCredentials);
     }
 
     /// <inheritdoc />
@@ -24,7 +24,7 @@ public class SuperAdminSeederService(IUserPasswordHasher userPasswordHasher, ILo
     {
         var superAdminUser = new User
         {
-            Username = SuperAdmin,
+            Username = SuperAdminCredentials,
             Password = string.Empty,
             Role = UserRole.SuperAdministrator
         };
@@ -34,8 +34,8 @@ public class SuperAdminSeederService(IUserPasswordHasher userPasswordHasher, ILo
 
         await context.Users.Where(x => x.Id == superAdminUser.Id)
             .ExecuteUpdateAsync(x =>
-                x.SetProperty(p => p.Password, userPasswordHasher.Hash(superAdminUser.Id, SuperAdmin)));
+                x.SetProperty(p => p.Password, userPasswordHasher.Hash(superAdminUser.Id, SuperAdminCredentials)));
         
-        logger.LogInformation("Super admin user '{Username}' with password '{Password}' created, please change password as soon as possible", SuperAdmin, SuperAdmin);
+        logger.LogInformation("Super admin user '{Username}' with password '{Password}' created, please change password as soon as possible", SuperAdminCredentials, SuperAdminCredentials);
     }
 }

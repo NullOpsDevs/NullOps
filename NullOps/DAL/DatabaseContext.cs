@@ -11,6 +11,8 @@ public class DatabaseContext : DbContext
 
     public DbSet<User> Users { get; set; }
     
+    public DbSet<Setting> Settings { get; set; }
+    
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder builder)
     {

@@ -12,7 +12,9 @@ public class User : IEntity
     
     public UserRole Role { get; set; }
     
+    public bool IsBlocked { get; set; }
+    
     public DateTime CreatedAt { get; set; }
     
-    public DateTime UpdatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
 }

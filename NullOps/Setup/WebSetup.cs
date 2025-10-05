@@ -85,5 +85,24 @@ public static class WebSetup
                     }
                 };
             });
+        
+        // Swagger
+        if (builder.Environment.IsDevelopment())
+        {
+            builder.Services.AddEndpointsApiExplorer();
+            
+            builder.Services.AddSwaggerGen(c =>
+            {
+                c.CustomSchemaIds(type =>
+                {
+                    if (!type.IsGenericType)
+                        return type.Name;
+                    
+                    var genericTypeName = type.Name[..type.Name.IndexOf('`')];
+                    var genericArgs = string.Join("", type.GetGenericArguments().Select(t => t.Name));
+                    return $"{genericTypeName}<{genericArgs}>";
+                });
+            });
+        }
     }
 }

@@ -9,5 +9,7 @@ public enum ErrorCode
     // Request validation
     RequestValidationFailed,
     
+    TestModeIsNotEnabled,
+    
     InternalServerError
 }

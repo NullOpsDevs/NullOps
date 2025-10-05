@@ -30,6 +30,18 @@ public class UserLoginService(IDbContextFactory<DatabaseContext> dbContextFactor
         
         return IssueTokenAsync(user);
     }
+
+    public async Task<string> UpdateTokenAsync(Guid userId, CancellationToken ct)
+    {
+        await using var context = await dbContextFactory.CreateDbContextAsync(ct);
+        
+        var user = await context.Users.FirstOrDefaultAsync(x => x.Id == userId, ct);
+        
+        if(user == null)
+            throw new DomainException(ErrorCode.InvalidCredentials, "Invalid credentials", HttpStatusCode.Unauthorized);
+        
+        return IssueTokenAsync(user);
+    }
     
     private static string IssueTokenAsync(User user)
     {
