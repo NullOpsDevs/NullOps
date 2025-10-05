@@ -6,7 +6,7 @@ namespace NullOps.Tests.E2ESuite;
 
 public static class Assert
 {
-    public static void IsTrue(bool? condition, string message)
+    public static void ExpectTrue(bool? condition, string message)
     {
         if(condition == true)
             return;
@@ -14,7 +14,7 @@ public static class Assert
         throw new TestException(message);
     }
     
-    public static void IsFalse(bool? condition, string message)
+    public static void ExpectFalse(bool? condition, string message)
     {
         if(condition == false)
             return;

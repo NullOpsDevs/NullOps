@@ -7,4 +7,7 @@ public interface ITestSuiteClient
 {
     [Get("/api/v1/test-suite/clear-database")]
     public Task<IApiResponse<BaseResponse>> ClearDatabaseAsync();
+    
+    [Get("/api/v1/test-suite/settings/set")]
+    public Task<IApiResponse<BaseResponse>> SetSettingAsync([Query] string setting, [Query] string value);
 }

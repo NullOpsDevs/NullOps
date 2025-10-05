@@ -2,9 +2,11 @@
 
 public enum ErrorCode
 {
-    // Authentication
+    // Authentication/users
     Unauthorized,
     InvalidCredentials,
+    UserAlreadyExists,
+    RegistrationIsDisabled,
     
     // Request validation
     RequestValidationFailed,

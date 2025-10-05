@@ -29,7 +29,7 @@ public class AuthenticationScenario : Scenario<GlobalTestContext>
         });
         
         Assert.ExpectStatusCode(response, HttpStatusCode.OK);
-        Assert.IsTrue(response.Content?.Success, "Authentication failed - default admin credentials were changed?");
+        Assert.ExpectTrue(response.Content?.Success, "Authentication failed - default admin credentials were changed?");
         Assert.IsMeaningfulString(response.Content?.Data?.Token, "Token is empty");
         
         ctx.Token = response.Content!.Data!.Token;
@@ -40,7 +40,7 @@ public class AuthenticationScenario : Scenario<GlobalTestContext>
         var response = await ctx.AuthClient.RefreshAsync(ctx.Token!);
         
         Assert.ExpectStatusCode(response, HttpStatusCode.OK);
-        Assert.IsTrue(response.Content?.Success, "Token refresh failed");
+        Assert.ExpectTrue(response.Content?.Success, "Token refresh failed");
         Assert.IsMeaningfulString(response.Content?.Data?.Token, "Token is empty");
     }
 }

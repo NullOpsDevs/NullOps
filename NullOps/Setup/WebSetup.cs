@@ -30,7 +30,10 @@ public static class WebSetup
 
         // Controllers
         builder.Services
-            .AddControllers()
+            .AddControllers(options =>
+            {
+                options.ModelValidatorProviders.Clear();
+            })
             .ConfigureApiBehaviorOptions(options =>
             {
                 options.SuppressModelStateInvalidFilter = true;

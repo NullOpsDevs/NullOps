@@ -14,6 +14,6 @@ public class SetupDatabaseScenario : Scenario<GlobalTestContext>
         var response = await ctx.TestSuiteClient.ClearDatabaseAsync();
         
         Assert.ExpectStatusCode(response, HttpStatusCode.OK);
-        Assert.IsTrue(response.Content?.Success, "Database wipe failed - development mode is not enabled?");
+        Assert.ExpectTrue(response.Content?.Success, "Database wipe failed - development mode is not enabled?");
     }
 }

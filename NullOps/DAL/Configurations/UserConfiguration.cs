@@ -18,5 +18,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(x => x.Password).IsRequired().HasMaxLength(256);
         builder.Property(x => x.Role).IsRequired();
         builder.Property(x => x.IsBlocked).IsRequired().HasDefaultValue(false);
+        
+        builder.HasIndex(user => user.Username).IsUnique();
     }
 }

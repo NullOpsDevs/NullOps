@@ -29,7 +29,7 @@ app.MapControllers();
 if (app.Environment.IsDevelopment())
 {
     startupLogger.Fatal("WARNING! You are running in development mode!");
-    startupLogger.Fatal("WARNING! Development mode will allow ANYONE to reset the database.");
+    startupLogger.Fatal("WARNING! Development mode will allow ANYONE to reset the database, change settings, and more!");
     
     app.UseSwagger();
 }

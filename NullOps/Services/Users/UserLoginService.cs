@@ -4,15 +4,17 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using NullOps.DAL;
+using NullOps.DAL.Enums;
 using NullOps.DAL.Models;
 using NullOps.DataContract;
 using NullOps.Exceptions;
+using NullOps.Extensions;
 using NullOps.Services.Users.Hashers;
 using NullOps.Setup;
 
 namespace NullOps.Services.Users;
 
-public class UserLoginService(IDbContextFactory<DatabaseContext> dbContextFactory, IUserPasswordHasher userPasswordHasher)
+public class UsersService(IDbContextFactory<DatabaseContext> dbContextFactory, IUserPasswordHasher userPasswordHasher)
 {
     public async Task<string> LoginAsync(string username, string password, CancellationToken ct)
     {
@@ -41,6 +43,36 @@ public class UserLoginService(IDbContextFactory<DatabaseContext> dbContextFactor
             throw new DomainException(ErrorCode.InvalidCredentials, "Invalid credentials", HttpStatusCode.Unauthorized);
         
         return IssueTokenAsync(user);
+    }
+    
+    public async Task RegisterUserAsync(string username, string password, UserRole userRole, CancellationToken cancellationToken)
+    {
+        await using var context = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+
+        if (!await context.GetConfigurationAsync(Settings.RegistrationEnabled, false))
+            throw new DomainException(ErrorCode.RegistrationIsDisabled, "Registration is disabled", HttpStatusCode.Forbidden);
+        
+        var userExists = await context.Users.AnyAsync(x => x.Username == username, cancellationToken);
+
+        if (userExists)
+            throw new DomainException(ErrorCode.UserAlreadyExists, "User already exists", HttpStatusCode.Conflict);
+        
+        var superAdminUser = new User
+        {
+            Username = username,
+            Password = string.Empty,
+            Role = UserRole.SuperAdministrator
+        };
+        
+        await context.Users.AddAsync(superAdminUser, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
+
+        await context.Users.Where(x => x.Id == superAdminUser.Id)
+            .ExecuteUpdateAsync(x =>
+                x.SetProperty(p => p.Password, userPasswordHasher.Hash(superAdminUser.Id, password)), cancellationToken);
+        
+        await transaction.CommitAsync(cancellationToken);
     }
     
     private static string IssueTokenAsync(User user)

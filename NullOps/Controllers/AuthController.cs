@@ -11,7 +11,7 @@ namespace NullOps.Controllers;
 
 [Controller]
 [Route("/api/v1/auth")]
-public class AuthController(UserLoginService userLoginService) : Controller
+public class AuthController(UsersService usersService) : Controller
 {
     [Authorize]
     [HttpGet("status")]
@@ -28,7 +28,7 @@ public class AuthController(UserLoginService userLoginService) : Controller
     {
         request.ValidateOrThrow();
         
-        var token = await userLoginService.LoginAsync(request.Username, request.Password, cancellationToken);
+        var token = await usersService.LoginAsync(request.Username, request.Password, cancellationToken);
 
         return BaseResponse<LoginResponse>
             .CreateSuccessful()
@@ -42,7 +42,7 @@ public class AuthController(UserLoginService userLoginService) : Controller
     [HttpPost("refresh")]
     public async Task<BaseResponse<LoginResponse>> RefreshAsync(CancellationToken cancellationToken)
     {
-        var token = await userLoginService.UpdateTokenAsync(User.GetUserId(), cancellationToken);
+        var token = await usersService.UpdateTokenAsync(User.GetUserId(), cancellationToken);
         
         return BaseResponse<LoginResponse>
             .CreateSuccessful()

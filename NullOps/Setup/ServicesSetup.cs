@@ -21,6 +21,6 @@ public static class ServicesSetup
         builder.Services.AddSingleton<ExceptionHandlerMiddleware>();
         
         // Domain services
-        builder.Services.AddSingleton<UserLoginService>();
+        builder.Services.AddSingleton<UsersService>();
     }
 }

@@ -8,7 +8,7 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "NOPS_API_PORT": "1",
-        "NOPS_DATABASE_CONNECTION_STRING": "Host=ep-twilight-glitter-ag0yh6rn-pooler.c-2.eu-central-1.aws.neon.tech; Database=nullops; Username=neondb_owner; Password=npg_zuqejY5HCP9f; SSL Mode=VerifyFull; Channel Binding=Require;"
+        "NOPS_DATABASE_CONNECTION_STRING": "Host=localhost; Database=nullops; Username=root; Password=root;"
       }
     }
   }

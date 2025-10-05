@@ -19,13 +19,16 @@ if (Uri.TryCreate(overridingUrl, UriKind.Absolute, out var url))
 var globalContext = new GlobalTestContext
 {
     AuthClient = RestService.For<IAuthClient>(baseUrl.ToString()),
-    TestSuiteClient = RestService.For<ITestSuiteClient>(baseUrl.ToString())
+    TestSuiteClient = RestService.For<ITestSuiteClient>(baseUrl.ToString()),
+    BaseUrl = baseUrl.ToString()
 };
 
 var scenarios = new Scenario<GlobalTestContext>[]
 {
     new SetupDatabaseScenario(),
-    new AuthenticationScenario()
+    new AuthenticationScenario(),
+    new SetupClients(),
+    new RegistrationScenario()
 };
 
 foreach (var scenario in scenarios)
