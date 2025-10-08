@@ -1,0 +1,17 @@
+﻿<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Run E2E test suite in Docker" type="ShConfigurationType">
+    <option name="SCRIPT_TEXT" value="echo &quot;Building containers...&quot;; docker compose down --remove-orphans; docker compose build; echo &quot;Starting containers...&quot;; docker compose up -d pgsql; docker compose up -d nullops; docker compose run --entrypoint &quot;&quot; -d nullops-testsuite tail -f /dev/null; echo &quot;Executing tests...&quot;; docker compose exec nullops-testsuite /app/NullOps.Tests.E2ESuite; docker compose down --remove-orphans;" />
+    <option name="INDEPENDENT_SCRIPT_PATH" value="false" />
+    <option name="SCRIPT_PATH" value="$PROJECT_DIR$/NullOps.Tests.E2ESuite/run.ps1" />
+    <option name="SCRIPT_OPTIONS" value="" />
+    <option name="INDEPENDENT_SCRIPT_WORKING_DIRECTORY" value="false" />
+    <option name="SCRIPT_WORKING_DIRECTORY" value="$PROJECT_DIR$/NullOps.Tests.E2ESuite" />
+    <option name="INDEPENDENT_INTERPRETER_PATH" value="true" />
+    <option name="INTERPRETER_PATH" value="pwsh.exe" />
+    <option name="INTERPRETER_OPTIONS" value="" />
+    <option name="EXECUTE_IN_TERMINAL" value="true" />
+    <option name="EXECUTE_SCRIPT_FILE" value="false" />
+    <envs />
+    <method v="2" />
+  </configuration>
+</component>
