@@ -7,6 +7,8 @@ using NullOps.DAL;
 using NullOps.DAL.Enums;
 using NullOps.DAL.Models;
 using NullOps.DataContract;
+using NullOps.DataContract.Request;
+using NullOps.DataContract.Response.Users;
 using NullOps.Exceptions;
 using NullOps.Extensions;
 using NullOps.Services.Users.Hashers;
@@ -16,6 +18,27 @@ namespace NullOps.Services.Users;
 
 public class UsersService(IDbContextFactory<DatabaseContext> dbContextFactory, IUserPasswordHasher userPasswordHasher)
 {
+    public async Task<PagedResponse<UserDto>> GetUsersAsync(Paging paging, CancellationToken ct)
+    {
+        await using var context = await dbContextFactory.CreateDbContextAsync(ct);
+        
+        return await context.Users
+            .OrderBy(x => x.Id)
+            .ToPagedResponseAsync<User, UserDto>(paging);
+    }
+
+    public async Task<UserDto> GetMeAsync(Guid userId, CancellationToken ct)
+    {
+        await using var context = await dbContextFactory.CreateDbContextAsync(ct);
+
+        var user = await context.Users.FirstOrDefaultAsync(x => x.Id == userId, ct);
+        
+        if(user == null)
+            throw new DomainException(ErrorCode.NotFound, "User not found", HttpStatusCode.NotFound);
+        
+        return new UserDto(user);
+    }
+    
     public async Task<string> LoginAsync(string username, string password, CancellationToken ct)
     {
         await using var context = await dbContextFactory.CreateDbContextAsync(ct);
@@ -62,7 +85,7 @@ public class UsersService(IDbContextFactory<DatabaseContext> dbContextFactory, I
         {
             Username = username,
             Password = string.Empty,
-            Role = UserRole.SuperAdministrator
+            Role = userRole
         };
         
         await context.Users.AddAsync(superAdminUser, cancellationToken);
@@ -81,7 +104,7 @@ public class UsersService(IDbContextFactory<DatabaseContext> dbContextFactory, I
         [
             new(UserClaimTypes.UserId, user.Id.ToString("D")),
             new(UserClaimTypes.UserName, user.Username),
-            new(UserClaimTypes.UserRole, user.Role.ToString("G"))
+            new(UserClaimTypes.UserRole, user.Role.ToRoleString())
         ];
         
         var key = EnvSettings.Jwt.SigningKey;

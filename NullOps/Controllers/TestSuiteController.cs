@@ -12,7 +12,7 @@ namespace NullOps.Controllers;
 
 [AllowAnonymous]
 [Route("/api/v1/test-suite")]
-public class TestSuiteController(IHostEnvironment hostEnvironment, IDbContextFactory<DatabaseContext> dbContextFactory, IServiceProvider serviceProvider)
+public class TestSuiteController(IHostEnvironment hostEnvironment, IDbContextFactory<DatabaseContext> dbContextFactory, IServiceProvider serviceProvider) : ControllerBase
 {
     [HttpGet("clear-database")]
     public async Task<BaseResponse> ClearDatabase()

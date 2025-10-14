@@ -28,7 +28,8 @@ var scenarios = new Scenario<GlobalTestContext>[]
     new SetupDatabaseScenario(),
     new AuthenticationScenario(),
     new SetupClients(),
-    new RegistrationScenario()
+    new RegistrationScenario(),
+    new UsersScenario()
 };
 
 foreach (var scenario in scenarios)
@@ -41,5 +42,7 @@ foreach (var scenario in scenarios)
         return 255;
     }
 }
+
+AnsiConsole.MarkupLine("\n[green underline]All tests passed![/]");
 
 return 0;

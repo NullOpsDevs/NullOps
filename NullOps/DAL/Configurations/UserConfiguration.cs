@@ -14,8 +14,8 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         
         builder.SetupBase();
         
-        builder.Property(x => x.Username).IsRequired().HasMaxLength(128);
-        builder.Property(x => x.Password).IsRequired().HasMaxLength(256);
+        builder.Property(x => x.Username).IsRequired().HasMaxLength(Limits.Users.MaxUsernameLength);
+        builder.Property(x => x.Password).IsRequired().HasMaxLength(Limits.Users.MaxPasswordLength);
         builder.Property(x => x.Role).IsRequired();
         builder.Property(x => x.IsBlocked).IsRequired().HasDefaultValue(false);
         

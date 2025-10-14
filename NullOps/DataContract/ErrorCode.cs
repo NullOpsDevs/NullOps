@@ -7,10 +7,15 @@ public enum ErrorCode
     InvalidCredentials,
     UserAlreadyExists,
     RegistrationIsDisabled,
+    InsufficientPermissions,
     
     // Request validation
     RequestValidationFailed,
     
+    // General errors
+    NotFound,
+    
+    // Test mode
     TestModeIsNotEnabled,
     
     InternalServerError

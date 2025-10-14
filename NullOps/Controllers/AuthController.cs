@@ -11,7 +11,7 @@ namespace NullOps.Controllers;
 
 [Controller]
 [Route("/api/v1/auth")]
-public class AuthController(UsersService usersService) : Controller
+public class AuthController(UsersService usersService) : ControllerBase
 {
     [Authorize]
     [HttpGet("status")]

@@ -14,8 +14,8 @@ public class SettingConfiguration : IEntityTypeConfiguration<Setting>
         
         builder.SetupBase();
         
-        builder.Property(x => x.Key).IsRequired().HasMaxLength(128);
-        builder.Property(x => x.Value).IsRequired().HasMaxLength(256);
+        builder.Property(x => x.Key).IsRequired().HasMaxLength(Limits.Settings.MaxKeyLength);
+        builder.Property(x => x.Value).IsRequired().HasMaxLength(Limits.Settings.MaxValueLength);
         
         builder.HasIndex(x => x.Key);
     }

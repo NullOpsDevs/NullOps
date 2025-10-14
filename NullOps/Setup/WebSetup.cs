@@ -65,10 +65,7 @@ public static class WebSetup
                     ValidAudience = JwtAudience,
                     IssuerSigningKey = EnvSettings.Jwt.SigningKey,
         
-                    ClockSkew = TimeSpan.FromMinutes(1),
-                    
-                    NameClaimType = UserClaimTypes.UserName,
-                    RoleClaimType = UserClaimTypes.UserRole
+                    ClockSkew = TimeSpan.FromMinutes(1)
                 };
 
                 options.Events = new JwtBearerEvents
