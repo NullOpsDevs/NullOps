@@ -48,37 +48,10 @@ public static class Program
         if (apiContainerId == null)
             return 255;
 
-        var globalContext = new GlobalTestContext
-        {
-            BaseUrl = BaseUrl,
-            AuthClient = RestService.For<IAuthClient>(BaseUrl),
-            TestSuiteClient = RestService.For<ITestSuiteClient>(BaseUrl)
-        };
-
-        var scenarios = new Scenario<GlobalTestContext>[]
-        {
-            new SetupDatabaseScenario(),
-            new AuthenticationScenario(),
-            new SetupClients(),
-            new RegistrationScenario(),
-            new UsersScenario()
-        };
-
-        foreach (var scenario in scenarios)
-        {
-            var result = await scenario.RunScenario(globalContext);
-
-            if (!result)
-            {
-                AnsiConsole.MarkupLine($"[red]Scenario failed: '[underline]{scenario.Name}[/]'[/]");
-                await WriteLogsToFile(dockerClient, apiContainerId);
-                
-                return 255;
-            }
-        }
-
-        AnsiConsole.MarkupLine("\n[green underline]All tests passed![/]");
+        if (!await RunTestsAsync(dockerClient, apiContainerId))
+            return 255;
         
+        await WriteLogsToFile(dockerClient, apiContainerId);
         await CleanupAsync(dockerClient);
 
         return 0;
@@ -464,6 +437,41 @@ public static class Program
         
         var fullLogPath = Path.GetFullPath(logFileName);
         
-        AnsiConsole.MarkupLine($"[green underline]API logs were written to '{fullLogPath}'[/]");
+        AnsiConsole.MarkupLine($"API logs were written to '{new Uri(fullLogPath, UriKind.Absolute)}'");
+    }
+
+    private static async Task<bool> RunTestsAsync(DockerClient dockerClient, string apiContainerId)
+    {
+        var globalContext = new GlobalTestContext
+        {
+            BaseUrl = BaseUrl,
+            AuthClient = RestService.For<IAuthClient>(BaseUrl),
+            TestSuiteClient = RestService.For<ITestSuiteClient>(BaseUrl)
+        };
+
+        var scenarios = new Scenario<GlobalTestContext>[]
+        {
+            new SetupDatabaseScenario(),
+            new AuthenticationScenario(),
+            new SetupClients(),
+            new RegistrationScenario(),
+            new UsersScenario()
+        };
+
+        foreach (var scenario in scenarios)
+        {
+            var result = await scenario.RunScenario(globalContext);
+
+            if (!result)
+            {
+                AnsiConsole.MarkupLine($"[red]Scenario failed: '[underline]{scenario.Name}[/]'[/]");
+                await WriteLogsToFile(dockerClient, apiContainerId);
+                
+                return false;
+            }
+        }
+
+        AnsiConsole.MarkupLine("\n[green underline]All tests passed![/]");
+        return true;
     }
 }
