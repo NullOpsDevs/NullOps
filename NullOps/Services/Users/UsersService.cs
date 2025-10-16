@@ -23,7 +23,7 @@ public class UsersService(IDbContextFactory<DatabaseContext> dbContextFactory, I
         await using var context = await dbContextFactory.CreateDbContextAsync(ct);
         
         return await context.Users
-            .OrderBy(x => x.Id)
+            .OrderBy(x => x.CreatedAt)
             .ToPagedResponseAsync<User, UserDto>(paging);
     }
 
@@ -81,19 +81,19 @@ public class UsersService(IDbContextFactory<DatabaseContext> dbContextFactory, I
         if (userExists)
             throw new DomainException(ErrorCode.UserAlreadyExists, "User already exists", HttpStatusCode.Conflict);
         
-        var superAdminUser = new User
+        var user = new User
         {
             Username = username,
             Password = string.Empty,
             Role = userRole
         };
         
-        await context.Users.AddAsync(superAdminUser, cancellationToken);
+        await context.Users.AddAsync(user, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
 
-        await context.Users.Where(x => x.Id == superAdminUser.Id)
+        await context.Users.Where(x => x.Id == user.Id)
             .ExecuteUpdateAsync(x =>
-                x.SetProperty(p => p.Password, userPasswordHasher.Hash(superAdminUser.Id, password)), cancellationToken);
+                x.SetProperty(p => p.Password, userPasswordHasher.Hash(user.Id, password)), cancellationToken);
         
         await transaction.CommitAsync(cancellationToken);
     }
