@@ -454,7 +454,6 @@ When creating a service, admins specify:
 4. Admin spins up agent as a Docker container on the target node:
    ```bash
    docker run -d \
-     -e CONTROL_PLANE_URL=https://control-plane.example.com \
      -e AGENT_TOKEN=<token-from-ui> \
      -v /var/run/docker.sock:/var/run/docker.sock \
      nullops/agent:latest
