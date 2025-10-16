@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace NullOps.DataContract.Request.Auth;
+namespace NullOps.DataContract.Request.Users;
 
 public class RegisterRequest : BaseRequest
 {

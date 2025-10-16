@@ -1,5 +1,5 @@
 ﻿using System.Net;
-using NullOps.DataContract.Request.Auth;
+using NullOps.DataContract.Request.Users;
 using NullOps.Tests.E2ESuite.Extensions;
 
 namespace NullOps.Tests.E2ESuite.Scenarios;

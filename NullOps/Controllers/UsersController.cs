@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using NullOps.DAL.Enums;
 using NullOps.DataContract;
 using NullOps.DataContract.Request;
-using NullOps.DataContract.Request.Auth;
+using NullOps.DataContract.Request.Users;
 using NullOps.DataContract.Response.Users;
 using NullOps.Extensions;
 using NullOps.Services.Users;

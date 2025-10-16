@@ -1,5 +1,5 @@
 ﻿using NullOps.DataContract;
-using NullOps.DataContract.Request.Auth;
+using NullOps.DataContract.Request.Users;
 using NullOps.DataContract.Response.Users;
 using Refit;
 
