@@ -3,13 +3,14 @@ using System.Text;
 using Docker.DotNet;
 using Docker.DotNet.Models;
 using Npgsql;
-using NullOps.Tests.E2ESuite;
 using NullOps.Tests.E2ESuite.Clients;
 using NullOps.Tests.E2ESuite.Scenarios;
 using Refit;
 using Spectre.Console;
 
-public class Program
+namespace NullOps.Tests.E2ESuite;
+
+public static class Program
 {
     private const string PostgresImage = "postgres";
     private const string PostgresTag = "18.0-alpine3.22";
@@ -298,23 +299,23 @@ public class Program
         JSONError? caughtError = null;
 
         await client.Images.BuildImageFromDockerfileAsync(new ImageBuildParameters
-                {
-                    Dockerfile = "NullOps.Dockerfile",
-                    Tags = [LocallyBuiltNullOpsImageName],
-                    Remove = true,
-                    CPUShares = 2048,
-                    CPUQuota = (Environment.ProcessorCount - 2) * 100000,
-                    CPUPeriod = 100000,
-                    Memory = 12L * 1024 * 1024 * 1024,
-                    MemorySwap = -1
-                }, stream, null, null, new Progress<JSONMessage>(m =>
-                {
-                    if (m.Stream != null)
-                        AnsiConsole.Write(m.Stream);
+        {
+            Dockerfile = "NullOps.Dockerfile",
+            Tags = [LocallyBuiltNullOpsImageName],
+            Remove = true,
+            CPUShares = 2048,
+            CPUQuota = (Environment.ProcessorCount - 2) * 100000,
+            CPUPeriod = 100000,
+            Memory = 12L * 1024 * 1024 * 1024,
+            MemorySwap = -1
+        }, stream, null, null, new Progress<JSONMessage>(m =>
+        {
+            if (m.Stream != null)
+                AnsiConsole.Write(m.Stream);
         
-                    if (m.Error != null)
-                        caughtError = m.Error;
-                }));
+            if (m.Error != null)
+                caughtError = m.Error;
+        }));
         
         if (caughtError == null)
         {
