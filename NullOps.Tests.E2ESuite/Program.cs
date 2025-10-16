@@ -60,7 +60,11 @@ public class Program
             new AuthenticationScenario(),
             new SetupClients(),
             new RegistrationScenario(),
-            new UsersScenario()
+            new UsersScenario(),
+            
+            // Unauthorized scenarios
+            new SetupUnauthorizedClients(),
+            new UnauthorizedUsersScenario(),
         };
 
         foreach (var scenario in scenarios)
