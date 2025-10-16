@@ -1,11 +1,9 @@
 ﻿using System.Net;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using NullOps.DataContract;
 using NullOps.Serializers;
-using NullOps.Services.Users;
 using ILogger = Serilog.ILogger;
 
 namespace NullOps.Setup;

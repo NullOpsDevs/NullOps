@@ -1,5 +1,4 @@
-﻿using System.Text.Json.Serialization;
-using NullOps.DAL.Enums;
+﻿using NullOps.DAL.Enums;
 using NullOps.DAL.Models;
 
 namespace NullOps.DataContract.Response.Users;

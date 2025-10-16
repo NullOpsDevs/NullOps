@@ -3,7 +3,6 @@ using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using NullOps.Extensions;
 using Serilog;
-using Serilog.Core.Enrichers;
 using Serilog.Events;
 using ILogger = Serilog.ILogger;
 

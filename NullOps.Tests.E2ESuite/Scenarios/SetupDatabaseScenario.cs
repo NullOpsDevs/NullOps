@@ -1,5 +1,4 @@
 ﻿using System.Net;
-using NullOps.Tests.E2ESuite.Exceptions;
 
 namespace NullOps.Tests.E2ESuite.Scenarios;
 

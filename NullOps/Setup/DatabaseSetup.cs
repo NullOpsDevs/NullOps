@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using NullOps.DAL;
-using NullOps.DAL.Enums;
 using NullOps.Extensions;
 using NullOps.Services.Seeding;
 

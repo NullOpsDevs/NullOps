@@ -1,6 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using NullOps.DAL;
-using NullOps.DAL.Enums;
 using NullOps.DAL.Models;
 
 namespace NullOps.Extensions;
