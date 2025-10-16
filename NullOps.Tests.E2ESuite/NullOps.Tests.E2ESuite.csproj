@@ -12,6 +12,9 @@
     </ItemGroup>
 
     <ItemGroup>
+      <PackageReference Include="AsyncProcess.Sharp" Version="1.0.1905181338" />
+      <PackageReference Include="Docker.DotNet" Version="3.125.15" />
+      <PackageReference Include="Npgsql" Version="9.0.4" />
       <PackageReference Include="Refit" Version="8.0.0" />
       <PackageReference Include="Spectre.Console" Version="0.51.1" />
     </ItemGroup>
