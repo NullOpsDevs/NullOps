@@ -87,33 +87,47 @@ When deployment is no longer needed, a user with Full Access can delete it. This
 ## System Component Interaction
 
 ```mermaid
-graph TB
-    UI[Web UI]
-    ControlPlane[Control Plane / Main Server]
-    Agent1[Agent - Node 1]
-    Agent2[Agent - Node 2]
-    AgentN[Agent - Node N]
-    Ingress[Ingress Service]
+flowchart TD
+    Users[Users] --> UI[Web UI]
+    UI <--> CP[Control Plane + PostgreSQL]
     
-    UI -->|User Actions| ControlPlane
-    ControlPlane -->|Deployment Commands<br/>State Updates| Agent1
-    ControlPlane -->|Deployment Commands<br/>State Updates| Agent2
-    ControlPlane -->|Deployment Commands<br/>State Updates| AgentN
+    CP <--> Agent1[Agent Node 1]
+    CP <--> Agent2[Agent Node 2]
+    CP <--> Agent3[Agent Node N]
     
-    Agent1 -->|Status Updates<br/>Pipeline Results<br/>Logs| ControlPlane
-    Agent2 -->|Status Updates<br/>Pipeline Results<br/>Logs| ControlPlane
-    AgentN -->|Status Updates<br/>Pipeline Results<br/>Logs| ControlPlane
+    Agent1 --> Containers1[Docker Containers]
+    Agent2 --> Containers2[Docker Containers]
+    Agent3 --> Containers3[Docker Containers]
     
-    Agent1 -.->|Manages| Docker1[Docker Containers<br/>Deployment 1, 2, 3]
-    Agent2 -.->|Manages| Docker2[Docker Containers<br/>Deployment 4, 5]
-    AgentN -.->|Manages| DockerN[Docker Containers<br/>Deployment N]
+    CP --> Ingress[Ingress Service]
     
-    Ingress -->|Routes Traffic| Docker1
-    Ingress -->|Routes Traffic| Docker2
-    Ingress -->|Routes Traffic| DockerN
+    Ingress --> Containers1
+    Ingress --> Containers2
+    Ingress --> Containers3
     
-    UI -.->|Access Services| Ingress
+    Agent1 -.Pull Images.-> Registry[Container Registries]
+    Agent2 -.Pull Images.-> Registry
+    Agent3 -.Pull Images.-> Registry
+    
+    style CP fill:#e1f5ff
+    style Ingress fill:#fff4e1
+    style Agent1 fill:#e8f5e9
+    style Agent2 fill:#e8f5e9
+    style Agent3 fill:#e8f5e9
 ```
+
+**Component Communication:**
+
+| From | To | Purpose |
+|------|-----|---------|
+| Users | UI | User interactions and deployment management |
+| UI | Control Plane | API calls for all operations |
+| Control Plane | Agents | Send deployment commands, state updates |
+| Agents | Control Plane | Report status, pipeline results, logs |
+| Control Plane | Ingress | Dynamic routing configuration updates |
+| Agents | Docker Containers | Manage and monitor local deployments |
+| Agents | Container Registries | Pull images with credentials |
+| Ingress | Docker Containers | Route external traffic to services |
 
 ## Deployment Creation Flow
 
@@ -440,9 +454,10 @@ When creating a service, admins specify:
 4. Admin spins up agent as a Docker container on the target node:
    ```bash
    docker run -d \
+     -e CONTROL_PLANE_URL=https://control-plane.example.com \
      -e AGENT_TOKEN=<token-from-ui> \
      -v /var/run/docker.sock:/var/run/docker.sock \
-     <container-image-name>
+     nullops/agent:latest
    ```
 5. Agent authenticates with control plane using the token
 6. Control plane registers the agent and synchronizes configuration
