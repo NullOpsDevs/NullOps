@@ -14,20 +14,10 @@ public class AgentConfiguration : IEntityTypeConfiguration<Agent>
         
         builder.SetupBase();
 
-        builder.Property(x => x.Name)
-            .IsRequired()
-            .HasMaxLength(Limits.Agents.MaxNameLength);
-
-        builder.Property(x => x.Address)
-            .IsRequired()
-            .HasMaxLength(Limits.Agents.MaxAddressLength);
-
-        builder.Property(x => x.Port)
-            .IsRequired();
-
-        builder.Property(x => x.Token)
-            .IsRequired()
-            .HasMaxLength(Limits.Agents.MaxTokenLength);
+        builder.Property(x => x.Name).IsRequired().HasMaxLength(Limits.Agents.MaxNameLength);
+        builder.Property(x => x.Address).IsRequired().HasMaxLength(Limits.Agents.MaxAddressLength);
+        builder.Property(x => x.Port).IsRequired();
+        builder.Property(x => x.Token).IsRequired().HasMaxLength(Limits.Agents.MaxTokenLength);
         
         builder.HasIndex(x => x.Name).IsUnique();
     }
