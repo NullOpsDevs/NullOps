@@ -91,9 +91,9 @@ flowchart TD
     Users[Users] --> UI[Web UI]
     UI <--> CP[Control Plane + PostgreSQL]
     
-    CP <--> Agent1[Agent Node 1]
-    CP <--> Agent2[Agent Node 2]
-    CP <--> Agent3[Agent Node N]
+    CP <==>|WebSocket| Agent1[Agent Node 1]
+    CP <==>|WebSocket| Agent2[Agent Node 2]
+    CP <==>|WebSocket| Agent3[Agent Node N]
     
     Agent1 --> Containers1[Docker Containers]
     Agent2 --> Containers2[Docker Containers]
@@ -122,12 +122,13 @@ flowchart TD
 |------|-----|---------|
 | Users | UI | User interactions and deployment management |
 | UI | Control Plane | API calls for all operations |
-| Control Plane | Agents | Send deployment commands, state updates |
-| Agents | Control Plane | Report status, pipeline results, logs |
+| Control Plane | Agents | Persistent WebSocket connection for commands and status queries |
 | Control Plane | Ingress | Dynamic routing configuration updates |
 | Agents | Docker Containers | Manage and monitor local deployments |
 | Agents | Container Registries | Pull images with credentials |
 | Ingress | Docker Containers | Route external traffic to services |
+
+**Note**: Control plane and agents communicate via persistent WebSocket connections. If connection drops, agent is considered offline and control plane continuously attempts reconnection until agent is disabled by admin.
 
 ## Deployment Creation Flow
 
@@ -135,22 +136,22 @@ flowchart TD
 sequenceDiagram
     participant User
     participant UI
-    participant ControlPlane
+    participant CP as Control Plane
     participant Registry as Container Registry
     participant Agent
     participant Docker
     participant Ingress
 
     User->>UI: Initiate Deployment Creation
-    UI->>ControlPlane: Request Project Details
-    ControlPlane->>UI: Return Project & Services
+    UI->>CP: Request Project Details
+    CP->>UI: Return Project & Services
     
     loop For Each Service
         alt Tag Mode: Selectable
-            UI->>ControlPlane: Request Available Tags
-            ControlPlane->>Registry: Query Tags (with pattern filter)
-            Registry-->>ControlPlane: Return Tags
-            ControlPlane->>UI: Return Filtered Tags
+            UI->>CP: Request Available Tags
+            CP->>Registry: Query Tags (with pattern filter)
+            Registry-->>CP: Return Tags
+            CP->>UI: Return Filtered Tags
             UI->>User: Display Tag Dropdown
             User->>UI: Select Tag
         else Tag Mode: Pinned
@@ -159,29 +160,36 @@ sequenceDiagram
     end
     
     User->>UI: Confirm Deployment
-    UI->>ControlPlane: Create Deployment Request
+    UI->>CP: Create Deployment Request
     
-    ControlPlane->>ControlPlane: Check user permissions<br/>(team access)
+    CP->>CP: Check user permissions<br/>(team access)
     
-    ControlPlane->>ControlPlane: Check resource availability<br/>(CPU/RAM on nodes)
+    CP->>CP: Check resource availability<br/>(CPU/RAM on online nodes)
     
     alt Resources Exhausted
-        ControlPlane->>UI: Error: Resources Full
+        CP->>UI: Error: Resources Full
         UI->>User: Display Error
     else Resources Available
-        ControlPlane->>Agent: Create Deployment<br/>(update internal state)
+        CP->>Agent: Create Deployment via WebSocket<br/>(specific pipeline version)
         Agent->>Agent: Update internal state<br/>(track deployment)
         
+        Note over UI,Agent: User can cancel at any time
+        
         Agent->>Agent: Execute Pipeline
+        
+        UI->>CP: Stream real-time logs
+        CP->>Agent: Query logs via WebSocket
+        Agent-->>CP: Return logs
+        CP-->>UI: Display logs
         
         loop For Each Component
             Agent->>Docker: Execute Component<br/>(create DB, run script, etc.)
             Docker-->>Agent: Component Result
             
-            alt Component Failed
+            alt Component Failed or User Cancelled
                 Agent->>Docker: Rollback<br/>(cleanup resources)
-                Agent->>ControlPlane: Pipeline Failed
-                ControlPlane->>UI: Deployment Failed
+                Agent->>CP: Pipeline Failed/Cancelled via WebSocket
+                CP->>UI: Deployment Failed/Cancelled
                 UI->>User: Show Error Details
             end
         end
@@ -192,12 +200,15 @@ sequenceDiagram
         Agent->>Docker: Start Services
         Docker-->>Agent: Services Running
         
-        Agent->>ControlPlane: Pipeline Success
-        ControlPlane->>Ingress: Update Routing<br/>(add ingress URLs)
-        Ingress-->>ControlPlane: Routing Updated
+        Agent->>Docker: Run Health Checks
+        Docker-->>Agent: Health Status
         
-        ControlPlane->>UI: Deployment Created
-        UI->>User: Show Deployment Details<br/>& Ingress URLs
+        Agent->>CP: Pipeline Success via WebSocket
+        CP->>Ingress: Update Routing<br/>(add ingress URLs)
+        Ingress-->>CP: Routing Updated
+        
+        CP->>UI: Deployment Created
+        UI->>User: Show Deployment Details,<br/>Health Status & Ingress URLs
     end
 ```
 
@@ -205,14 +216,25 @@ sequenceDiagram
 
 ### Allocation and Limits
 - Each project defines CPU and RAM restrictions that apply to all its deployments
-- Before creating a deployment, the control plane checks if any node in the environment has sufficient resources
+- Before creating a deployment, the control plane checks if any online node in the environment has sufficient resources
+- Resource checks include both allocated resources and actual OS-level resource consumption
 - If resources are exhausted, deployment creation fails immediately with an error message
 - Users do not see available resources unless deployment creation fails
+
+### Resource Monitoring
+- **OS-Level Monitoring**: Agents monitor actual resource consumption from the operating system
+- **Docker Limits**: Docker enforces CPU and RAM limits on running containers
+- **Resource Accounting**:
+    - Allocated resources tracked by control plane
+    - Actual consumption monitored by agents
+    - Both system resources and Docker container resources are counted
+- **Resource Drift Prevention**: Docker container limits prevent processes from exceeding allocated resources
 
 ### Runtime Behavior
 - Docker enforces CPU and RAM limits on running containers
 - If a deployment attempts to exceed its limits, Docker prevents additional resource consumption
 - Processes within the deployment cannot bypass these restrictions
+- If Docker crashes and resources aren't freed properly, this is considered a user/infrastructure error
 
 ### Cleanup and Monitoring
 - Agents maintain internal state of which deployments exist on their node
@@ -220,7 +242,7 @@ sequenceDiagram
     - Services from deleted deployments
     - Orphaned resources (zombie deployments)
     - Resources from failed deployments after rollback
-- Control plane communicates state changes to agents to keep internal state synchronized
+- Control plane communicates state changes to agents via WebSocket to keep internal state synchronized
 
 ## Multi-tenancy and Isolation
 
@@ -237,11 +259,50 @@ sequenceDiagram
 
 ### Ingress Routing
 - Each service within a deployment is accessible via subdomain-based routing
-- URL format: `http://servicename.deploymentname.envname.ingress.lan`
+- URL format example: `http://servicename.deploymentname.envname.example.com`
+- **Subdomain Configuration**: Base subdomain is configurable per environment in environment settings
+- **DNS Setup Required**: DevOps engineer must manually configure DNS records to point to the ingress entry point
 - Ingress URLs remain stable even when deployments are recreated
 - Deployments can call external APIs as needed
 - Ingress configuration is dynamically updated when deployments are created or destroyed
 - Control plane notifies ingress service of routing changes
+
+## Security
+
+### Communication Security
+- **WebSocket Connections**: Control plane and agents communicate via persistent WebSocket connections
+- **TLS Encryption**: All WebSocket connections use TLS encryption
+- **Certificate-based Trust**:
+    - Agent generates a self-signed certificate on first startup
+    - Certificate thumbprint is stored in control plane database during agent registration
+    - On each connection, control plane validates agent's certificate thumbprint
+    - If thumbprint changes (certificate regenerated), agent is marked as untrusted
+    - DevOps engineer must manually approve new thumbprint through UI before agent is trusted again
+
+### Token Management
+- **Agent Authentication Tokens**: Generated by control plane when admin adds a new node
+- **Token Rotation**: Admins can rotate agent tokens through UI
+    - New token is generated
+    - Agent must be reconfigured with new token
+    - Old token is immediately invalidated
+- **Token Revocation**: Admin can revoke agent token to immediately disconnect agent
+- **Token Storage**: Tokens are hashed in control plane database
+
+### Encryption at Rest
+- **Secret Encryption**: All pipeline secrets and container registry credentials are encrypted with AES-256
+- **Encryption Key Management**:
+    - AES encryption key is provided by DevOps engineer during control plane setup
+    - Key is stored in environment variable or external Vault (after-MVP)
+    - Both control plane/Vault AND database must be compromised to decrypt secrets
+- **Encrypted Data**:
+    - Container registry credentials
+    - Pipeline secrets (passwords, API keys, connection strings)
+    - Agent authentication tokens (hashed, not encrypted)
+
+### Access Control
+- User authentication via username/password stored in PostgreSQL
+- Team-based permissions enforced at control plane level
+- All operations are validated against user's team memberships and access levels
 
 ## Service Configuration and Container Registries
 
@@ -311,24 +372,56 @@ When creating a service, admins specify:
 - Maintain persisted internal state of deployments on the node
 - Execute pipelines for new deployments
 - Monitor and cleanup resources
-- Respond to control plane queries for status and logs
+- Accept and maintain persistent WebSocket connections from control plane
+- Generate and manage self-signed TLS certificate
 
 ### Communication Model
-- Control plane sends deployment commands and state updates to agents
-- Control plane queries agents for:
-    - Pipeline execution status
-    - Deployment status
-    - Service logs
-    - Resource usage
-- Agents report back status, results, and logs to control plane
-- Agents work semi-autonomously based on their internal state
+- **WebSocket Connection**: Persistent, bidirectional WebSocket connection between control plane and each agent
+- **Connection Initiation**: Control plane initiates WebSocket connection to agent
+- **TLS Encryption**: All WebSocket connections are encrypted using TLS
+- **Agent as Server**: Agent exposes WebSocket endpoint; control plane connects as client
+- **Connection Lifecycle**:
+    - Control plane establishes WebSocket connection to agent on agent registration
+    - Connection remains open for real-time communication
+    - If connection drops, control plane attempts to reconnect
+    - Agent accepts reconnection attempts from control plane
+- **Connection Loss Handling**:
+    - Agent is marked as "offline" when WebSocket connection is lost
+    - Control plane continuously attempts to restore connection
+    - Reconnection attempts continue until agent is manually disabled by admin
+    - When agent comes back online, state is synchronized from control plane
+
+### Agent Health and Availability
+- **Health Status**: Determined by WebSocket connection state
+- **Online**: WebSocket connection is active and healthy
+- **Offline**: WebSocket connection is lost or failed
+- **When Agent Goes Offline**:
+    - All deployments on that agent are marked as offline (not accessible)
+    - Ingress is automatically reconfigured to ignore the offline node
+    - Deployments are NOT migrated to other nodes
+    - Deployments remain in offline state until agent reconnects
+- **Version Compatibility**:
+    - Control plane checks agent version on connection
+    - Mixed agent versions are NOT supported
+    - Agent with incompatible version is rejected and marked as incompatible
+
+### State Management
+- **Control Plane Authority**: Control plane is always the source of truth for deployment state
+- **State Reconciliation**: When agent reconnects after being offline:
+    - Agent receives full deployment state from control plane
+    - Agent's internal state is updated to match control plane
+    - Deployments are verified and restarted if necessary
+- **State Corruption**: If agent's internal state becomes corrupted:
+    - Only mounted volume data may be lost
+    - Agent is fully reconfigured by control plane on next connection
+    - Deployment state is restored from control plane database
 
 ### Internal State
 - Track which deployments are active on the node
 - Store deployment configurations
 - Maintain pipeline execution history
 - Persist state locally to survive agent restarts
-- State synchronization with control plane after restart
+- State synchronization with control plane on reconnection
 
 ## Pipeline Execution
 
@@ -342,23 +435,37 @@ When creating a service, admins specify:
 - **Packaging**: Plugins are packaged as NuGet packages
 - **Storage**: Plugins are stored in an internal repository or NuGet repository
 - **Configuration**: Admins configure available plugins through the UI
-- **Distribution**: When plugin list changes, control plane notifies all agents
+- **Distribution**: When plugin list changes, control plane notifies all agents via WebSocket
 - **Loading**: Agents download and load plugins from the configured repository
 - **Discovery**: Agents use the plugin system to discover and execute components during pipeline execution
+- **Versioning**: Control plane and agents provide abstract, versioned API for plugins
+- **Plugin Updates**: Updating a plugin version does not affect running deployments
+- **Safety**: Agents run plugins in isolated try/catch blocks to prevent agent crashes from plugin bugs
+- **Failed Downloads**: If plugin download from NuGet fails, plugin won't be loaded and components using it will fail
+
+### Pipeline Versioning
+- **Version on Save**: Each time a pipeline is modified and saved, a new version is created
+- **Running Deployments**: Currently running/active deployments use the specific pipeline version they were created with
+- **Immutable Versions**: Historical pipeline versions cannot be modified
+- **Admin Modifications**: Admins can modify pipelines while deployments are running without affecting those deployments
+- **New Deployments**: New deployments always use the latest pipeline version
 
 ### Execution Flow
 - Pipelines are executed by agents on deployment nodes
-- Control plane queries agents for pipeline execution status
+- Control plane sends pipeline definition (specific version) to agent via WebSocket
+- Control plane monitors pipeline execution status in real-time
 - Pipeline executes components sequentially in defined order
 - If any component fails, the entire pipeline fails
 - Failed deployments trigger automatic rollback by the agent
-- Users can retry failed deployments through the UI
+- Users can retry failed deployments through the UI (uses latest pipeline version)
 
 ### Failure Handling
 - Component failure = pipeline failure
 - Rollback removes all resources created during the failed deployment attempt
 - Agents ensure cleanup of partial deployments
 - Error details are displayed to all users (admins and regular users see the same errors)
+- **External Service Failures**: If container registry is unreachable or external service fails during pipeline execution, deployment fails
+- **No External Databases**: External database dependencies are not supported in pipelines (or will cause pipeline failure)
 
 ## Secrets and Configuration Management
 
@@ -388,6 +495,20 @@ When creating a service, admins specify:
 - Users can only modify service versions, all other configuration is locked
 - To use different versions, users must create a new deployment (versions cannot be changed after creation)
 - Each deployment gets unique ingress URLs that remain stable across recreations
+- Deployments use the current pipeline version at the time of creation
+
+### Deployment Cancellation
+- **In-Progress Cancellation**: Users can cancel deployments that are currently being created
+- **Cancellation = Deletion**: Cancelling a deploying deployment is treated the same as deleting it
+- **Rollback on Cancel**: Agent performs rollback and cleanup of partially created resources
+- **Delete During Creation**: If user attempts to delete a deployment while it's being created, it is cancelled and rolled back
+
+### Deployment Cloning
+- Users can clone an existing deployment
+- Cloning creates a new deployment with the same configuration
+- Users can modify service versions during cloning (if tag mode is selectable)
+- Cloned deployment gets new unique ingress URLs
+- Cloned deployment uses the latest pipeline version (not the original deployment's pipeline version)
 
 ### Auto-cleanup Configuration
 - **Environment Level**: Default auto-cleanup timer (e.g., 7 days of inactivity)
@@ -398,6 +519,8 @@ When creating a service, admins specify:
 - Timer starts counting from last deployment activity
 - UI displays countdown timer showing time remaining before auto-deletion
 - Users with Full Access can extend deployment lifetime through UI
+- **Lifetime Extension**: When user extends deployment, timer resets completely
+- **Maximum Lifetime**: No hard limit on deployment lifetime (can extend indefinitely)
 - System sends no additional warnings - timer in UI is the warning mechanism
 - Manual deletion by users with Full Access triggers immediate cleanup
 - Deployment pausing is not supported
@@ -421,19 +544,59 @@ When creating a service, admins specify:
 
 ## Edge Cases and Failure Scenarios
 
-### Node Failures
-- If a deployment node goes down mid-deployment, the deployment fails
-- Failed deployment triggers rollback via agent on remaining nodes (if applicable)
-- Future consideration: investigate graceful handling and potential recovery mechanisms
+### Network Connection Loss
+- **During Deployment**: If WebSocket connection drops during deployment:
+    - Agent is marked as offline
+    - Deployment is paused in its current state
+    - Agent continues attempting to complete pipeline locally
+    - When connection is restored, agent reports current state to control plane
+    - Control plane resumes monitoring the deployment
+- **Connection Recovery**: Control plane and agent both attempt to restore connection
+- **Deployment State After Recovery**: Deployment continues from where it left off
 
-### Long-running Deployments
-- System supports long-running deployments (e.g., hours for large data imports)
-- Timeout handling to be defined by pipeline configuration
+### Node Failures
+- If a deployment node goes down completely, all deployments on that node are marked offline
+- Ingress automatically reconfigures to remove offline node from routing
+- Deployments are NOT automatically migrated to other nodes
+- When node comes back online:
+    - Agent reconnects to control plane
+    - State is synchronized from control plane
+    - Deployments are verified and services restarted if needed
+    - Ingress is reconfigured to include the node again
+
+### Node Maintenance and Decommissioning
+- **Graceful Decommissioning**:
+    1. Admin disables node for new deployments through UI
+    2. Existing deployments continue running
+    3. Admin waits for deployments to be deleted naturally or manually deletes them
+    4. Once node is empty, admin can safely remove it
+- **Node Reboot**:
+    - Services continue running in Docker during reboot
+    - Agent reconnects on startup
+    - Agent re-syncs state with control plane
+    - No deployment interruption if Docker services remain running
+- **Future Enhancement**: Automatic deployment migration between nodes (after-MVP)
+
+### Long-running Operations
+- System supports long-running deployments and pipeline operations
+- **Large Image Pulls**: If container image pull takes excessive time (30+ minutes), this is considered user error
+- Users should optimize container images for reasonable pull times
+- No specific timeout enforced, but extremely long operations may cause issues
+- **Progress Indication**: Real-time pipeline status and logs visible in UI during long operations
 
 ### Concurrent Deployments
 - Multiple users can deploy the same project simultaneously
 - Each deployment is isolated and receives unique ingress URLs
 - Resource availability is checked independently for each deployment request
+- **Race Conditions**: If two users deploy simultaneously and resources are borderline, no special handling
+    - System designed for simplicity over complex resource locking
+    - One deployment may fail due to insufficient resources
+
+### Agent Version Compatibility
+- Control plane checks agent version on connection
+- Mixed agent versions are NOT supported across the environment
+- Agents with incompatible versions are rejected
+- All agents must be upgraded together when system version changes
 
 ## Environment Scaling and Node Management
 
@@ -441,31 +604,58 @@ When creating a service, admins specify:
 - Admins can add new deployment nodes to an existing environment dynamically
 - Nodes are manually configured by DevOps engineers through the UI
 - Control plane does not automatically discover agents
+- Admin provides:
+    - Node hostname or IP address (where agent is accessible)
+    - Agent API port
+    - Authentication token for secure communication
 - New nodes must be:
     - Provisioned with Docker/k8s infrastructure
     - Have agent service installed and running
+    - Accessible from control plane (network connectivity)
     - Registered in the control plane via UI by admin
-    - Configured with appropriate network policies and ingress routing
+    - Configured with appropriate network policies for deployment isolation
+- **DNS Configuration**: Admin must configure DNS for ingress subdomain to point to ingress entry point
 
 ### Agent Installation Process
 1. Admin navigates to environment configuration in UI
-2. UI generates a unique authentication token for the new agent
-3. Admin retrieves the token from UI
-4. Admin spins up agent as a Docker container on the target node:
+2. Admin adds new node to the environment, providing:
+    - Node hostname or IP address (where control plane can reach the agent)
+    - Agent WebSocket port
+    - Authentication token (generated by UI)
+3. Admin spins up agent as a Docker container on the target node:
    ```bash
    docker run -d \
+     -p 5000:5000 \
      -e AGENT_TOKEN=<token-from-ui> \
      -v /var/run/docker.sock:/var/run/docker.sock \
+     -v /var/lib/nullops-agent:/data \
      nullops/agent:latest
    ```
-5. Agent authenticates with control plane using the token
-6. Control plane registers the agent and synchronizes configuration
+4. Agent starts and generates self-signed TLS certificate (if not already present)
+5. Agent exposes WebSocket endpoint and waits for control plane connection
+6. Control plane initiates WebSocket connection to agent using configured hostname and port
+7. Control plane authenticates using token and stores agent certificate thumbprint
+8. Control plane synchronizes plugin list and deployment state with agent
+9. Node becomes available for deployment allocation
 
-### Node Configuration
-- Admin provides node connection details in UI
-- Control plane establishes connection with new agent
-- Agent synchronizes plugin list from control plane
+**Certificate Management**:
+- Agent generates self-signed certificate on first startup
+- Certificate is stored in mounted volume (`/data`) and persists across restarts
+- If certificate is deleted or regenerated, agent will be untrusted
+- Admin must approve new certificate thumbprint through UI
+
+**Note**: Agent does not need to know control plane URL. Agent exposes a WebSocket endpoint and control plane connects to it.
+
+### Node Configuration in Control Plane
+- Admin provides node connection details in UI:
+    - Hostname or IP address (where agent is accessible)
+    - Agent WebSocket port
+    - Authentication token
+- Control plane initiates WebSocket connection to agent endpoint
+- Control plane authenticates using token and stores agent certificate thumbprint
+- Control plane synchronizes plugin list and state with agent via WebSocket
 - Node becomes available for deployment allocation
+- **Node Disabling**: Admin can disable node to prevent new deployments while existing ones complete
 
 ## Resource Management and Quotas
 
@@ -486,9 +676,16 @@ When creating a service, admins specify:
 
 ### Planned Features
 - **SSO Integration**: Support for Single Sign-On authentication providers
-- **Disaster Recovery**: Backup and restore procedures for environments and deployments
-- **Automatic Node Discovery**: Control plane automatically discovers and registers new agents
-- **Advanced Monitoring**: Enhanced metrics and alerting capabilities
+- **Vault Integration**: Store AES encryption key in external Vault instead of environment variable
+- **Deployment Migration**: Automatically migrate deployments between nodes during maintenance
+- **Deployment Diff**: Compare configuration differences between two deployments
+- **Pipeline Dry-Run**: Test/validate pipelines without actually deploying
+- **Advanced Monitoring and Alerting**:
+    - System-wide metrics dashboard
+    - Alerting when control plane or agents have issues
+    - Comprehensive audit logs with detailed "who did what when"
+- **Deployment Templates**: DevOps engineers can create templates for common configurations
+- **Disaster Recovery**: Comprehensive backup and restore procedures for environments and deployments
 
 ## Technical Architecture Components
 
@@ -496,32 +693,44 @@ When creating a service, admins specify:
 - Central orchestration service
 - Manages users, teams, projects, environments, and container registries
 - Handles authentication and authorization (local accounts)
-- Communicates with agents to manage deployments
-- Queries agents for status, logs, and metrics
+- Maintains persistent WebSocket connections with all agents
+- Monitors agent health via WebSocket connection status
+- Queries agents for status, logs, and metrics via WebSocket
 - Notifies ingress service of deployment changes for dynamic routing updates
 - Provides API for UI
-- **Data Persistence**: All state persisted to PostgreSQL database
+- **Data Persistence**: All state persisted to PostgreSQL database with connection pooling
 - **User Management**: Stores user accounts, team memberships, and permissions
-- **Configuration**: Stores projects, pipelines, environments, plugin configurations, and container registry credentials
-- **Secret Management**: Securely stores and provides secrets to agents during pipeline execution
+- **Configuration**: Stores projects, pipelines (with versions), environments, plugin configurations, and container registry credentials
+- **Secret Management**: Securely stores and provides encrypted secrets to agents during pipeline execution
+- **Certificate Management**: Stores agent certificate thumbprints for trust validation
+- **Schema Management**: Automated database migrations, no manual schema changes required
 
 ### Agents
 - API services running on each deployment node
 - Maintain internal state of local deployments
 - Execute pipelines locally
 - Monitor and cleanup resources
-- Report status and logs to control plane
+- Maintain persistent WebSocket connection to control plane
 - **Image Management**: Pull container images from configured registries using provided credentials
-- **Authentication**: Use token-based authentication with control plane
+- **Authentication**: Validate incoming WebSocket connection using configured token
+- **Certificate Management**: Generate and manage self-signed TLS certificate for secure WebSocket connection
 - **Installation**: Deployed as Docker containers with generated tokens from admin UI
+- **Version Compatibility**: Must match control plane version; mixed versions not supported
+- **Health Reporting**: Connection status indicates agent health (online/offline)
+- **State Synchronization**: Receive full state from control plane on reconnection
+- **Plugin Safety**: Execute plugins in isolated try/catch blocks to prevent crashes
 
 ### Ingress Service
 - Central routing for all deployment services
-- Subdomain-based routing (`servicename.deploymentname.envname.ingress.lan`)
+- Subdomain-based routing (format: `servicename.deploymentname.envname.<configured-domain>`)
 - Network isolation enforcement
 - **Dynamic Configuration**: Automatically reconfigures routing when deployments are created or destroyed
 - Receives routing updates from control plane
-- Maintains routing table for all active deployments across all nodes
+- Maintains routing table for all active deployments across all online nodes
+- **DNS Requirements**: DevOps engineer must configure external DNS to point subdomain to ingress entry point
+- Base subdomain is configurable per environment
+- **High Availability**: Hosted near control plane; HA not required for internal-use system
+- Automatically removes offline nodes from routing table
 
 ### Plugin System
 - Extensible component registration
@@ -529,25 +738,32 @@ When creating a service, admins specify:
 - Used by agents to run pipeline components
 - **Packaging Format**: NuGet packages
 - **Repository**: Internal or external NuGet repository
-- **Notification**: Control plane notifies agents when plugin configuration changes
+- **Notification**: Control plane notifies agents via WebSocket when plugin configuration changes
 - **Distribution**: Agents download plugins from configured repository on demand
+- **Versioning**: Abstract versioned API between control plane/agents and plugins
+- **Safety**: Plugins run in isolated environment with error handling
 
 ### UI
 - Web interface for users and admins
 - Displays deployment status and countdown timers
-- Provides log viewing
+- Provides log viewing and real-time log streaming
 - Allows deployment management based on permissions
 - **Admin Capabilities**:
     - Configure container registries (add/remove registries, manage credentials)
     - Define services with tag modes and patterns
-    - Create and edit pipelines using visual node-based editor
+    - Create and edit pipelines using visual node-based editor (creates new version on save)
     - Configure plugins (add/remove NuGet packages)
-    - Manage nodes and environments
+    - Manage nodes and environments (including ingress subdomain configuration and DNS setup)
     - Create and manage teams
     - Assign team permissions to projects/environments
-    - Generate agent authentication tokens
+    - Generate and rotate agent authentication tokens
+    - Approve agent certificate thumbprints after certificate changes
+    - Configure node connection details (hostname, port, token, WebSocket URL)
+    - Disable/enable nodes for maintenance
 - **User Capabilities**:
     - Create deployments with service version selection
-    - View deployment status, logs, and metrics
+    - Clone existing deployments with version modifications
+    - View deployment status, logs, metrics, and health checks
+    - Cancel in-progress deployments
     - Delete deployments (with Full Access permission)
     - Extend deployment lifetime before auto-cleanup
