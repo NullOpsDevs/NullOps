@@ -61,6 +61,7 @@ Teams are organizational units created and managed by admins. Teams provide acce
 | Project            | A pipeline of services and components that create a deployable set. Describes required services, databases scripts and checks that are required to get a working QA environment. |
 | Deployment         | A project that has been deployed to the environment. Includes its own ingress to access services inside the project.                                                             |
 | Component          | Extendable action in pipeline. Examples would be: "Create DB", "Execute SQL script", "Create Keycloak user" and etc.                                                             |
+| Plugin             | Docker container that implements a component. Receives JSON input via stdin, returns JSON output via stdout.                                                                     |
 | Team               | A group of users with shared access to projects or environments. Created and managed by admins.                                                                                  |
 | Agent              | API service running on deployment nodes. Maintains internal state of deployments on that node and executes pipelines.                                                            |
 | Container Registry | Docker registry configured by admins. Can be public (DockerHub) or private registries with authorization credentials.                                                            |
@@ -128,7 +129,7 @@ flowchart TD
 | Agents | Container Registries | Pull images with credentials |
 | Ingress | Docker Containers | Route external traffic to services |
 
-**Note**: Control plane and agents communicate via persistent WebSocket connections. If connection drops, agent is considered offline and control plane continuously attempts reconnection until agent is disabled by admin.
+**Note**: Control plane initiates WebSocket connections to agents. Agents expose WebSocket endpoints and do not need to know control plane URL. If connection drops, control plane continuously attempts reconnection until agent is disabled by admin.
 
 ## Deployment Creation Flow
 
@@ -374,6 +375,7 @@ When creating a service, admins specify:
 - Monitor and cleanup resources
 - Accept and maintain persistent WebSocket connections from control plane
 - Generate and manage self-signed TLS certificate
+- Pull and execute plugin containers
 
 ### Communication Model
 - **WebSocket Connection**: Persistent, bidirectional WebSocket connection between control plane and each agent
@@ -423,25 +425,122 @@ When creating a service, admins specify:
 - Persist state locally to survive agent restarts
 - State synchronization with control plane on reconnection
 
-## Pipeline Execution
+## Pipeline Execution and Plugin System
 
 ### Component System
-- Components are registered via a Plugin System
+- Components are implemented as Docker container plugins
 - Custom components can be added to extend pipeline functionality
 - Component dependencies (Component A requiring Component B) are not supported
 - Examples: "Create DB", "Execute SQL script", "Create Keycloak user"
 
-### Plugin System
-- **Packaging**: Plugins are packaged as NuGet packages
-- **Storage**: Plugins are stored in an internal repository or NuGet repository
-- **Configuration**: Admins configure available plugins through the UI
+### Docker Container Plugin Architecture
+
+**Plugin Contract:**
+- Plugins are Docker containers that implement a simple stdin/stdout interface
+- Input: JSON via stdin
+- Output: JSON via stdout
+- Exit code: 0 for success, non-zero for failure
+
+**Example Plugin Input:**
+```json
+{
+  "action": "create",
+  "parameters": {
+    "database": "myapp_qa",
+    "version": "14"
+  },
+  "secrets": {
+    "adminPassword": "encrypted_value"
+  }
+}
+```
+
+**Example Plugin Output:**
+```json
+{
+  "success": true,
+  "output": "Database created successfully",
+  "outputs": {
+    "connectionString": "postgres://localhost:5432/myapp_qa",
+    "databaseName": "myapp_qa"
+  }
+}
+```
+
+**Plugin Execution:**
+```bash
+# Agent executes plugin like this:
+echo '{"action":"create",...}' | docker run --rm plugin-image:v1
+```
+
+### Plugin Distribution and Management
+
+- **Storage**: Plugins are stored as Docker images in container registries
+- **Configuration**: Admins configure available plugins through the UI by specifying Docker image names
 - **Distribution**: When plugin list changes, control plane notifies all agents via WebSocket
-- **Loading**: Agents download and load plugins from the configured repository
-- **Discovery**: Agents use the plugin system to discover and execute components during pipeline execution
-- **Versioning**: Control plane and agents provide abstract, versioned API for plugins
-- **Plugin Updates**: Updating a plugin version does not affect running deployments
-- **Safety**: Agents run plugins in isolated try/catch blocks to prevent agent crashes from plugin bugs
-- **Failed Downloads**: If plugin download from NuGet fails, plugin won't be loaded and components using it will fail
+- **Loading**: Agents pull plugin images from configured container registries (same registries used for services)
+- **Discovery**: Agents maintain a registry of available plugin images
+- **Versioning**: Plugin versions are managed through Docker image tags (e.g., `mycompany/plugin-postgres:v1.2.0`)
+- **Plugin Updates**: Updating a plugin version does not affect running deployments (they use the plugin version specified in their pipeline version)
+- **Isolation**: Each plugin execution runs in an isolated Docker container
+- **Failed Downloads**: If plugin image pull fails, the component using that plugin will fail during pipeline execution
+
+**Plugin Registration in UI:**
+- Admins specify plugin details:
+    - Plugin name (e.g., "PostgreSQL Database Creator")
+    - Docker image (e.g., `mycompany/plugin-postgres:v1.2.0`)
+    - Container registry (select from configured registries)
+    - Description and parameter schema
+    - Resource limits (CPU/RAM for plugin execution)
+
+**Plugin Development:**
+- Plugins can be written in any language (Python, Go, Bash, Node.js, etc.)
+- Plugin developers package their code as Docker images
+- Plugins can use any libraries or tools available in their container
+- Plugins must read JSON from stdin and write JSON to stdout
+- Exit code 0 indicates success, non-zero indicates failure
+
+**Example Plugin Implementation (Python):**
+```python
+#!/usr/bin/env python3
+import json
+import sys
+import psycopg2
+
+def main():
+    # Read input from stdin
+    input_data = json.load(sys.stdin)
+    
+    try:
+        # Execute plugin logic
+        conn = psycopg2.connect(input_data['secrets']['adminConnection'])
+        conn.autocommit = True
+        cursor = conn.cursor()
+        cursor.execute(f"CREATE DATABASE {input_data['parameters']['database']}")
+        
+        # Return success result
+        result = {
+            "success": True,
+            "output": f"Database {input_data['parameters']['database']} created",
+            "outputs": {
+                "databaseName": input_data['parameters']['database']
+            }
+        }
+        json.dump(result, sys.stdout)
+        sys.exit(0)
+        
+    except Exception as e:
+        # Return failure result
+        result = {
+            "success": False,
+            "output": f"Failed to create database: {str(e)}"
+        }
+        json.dump(result, sys.stdout)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
+```
 
 ### Pipeline Versioning
 - **Version on Save**: Each time a pipeline is modified and saved, a new version is created
@@ -449,15 +548,32 @@ When creating a service, admins specify:
 - **Immutable Versions**: Historical pipeline versions cannot be modified
 - **Admin Modifications**: Admins can modify pipelines while deployments are running without affecting those deployments
 - **New Deployments**: New deployments always use the latest pipeline version
+- **Plugin Versions**: Pipeline versions store specific plugin image tags, ensuring deployments always use the same plugin versions
 
 ### Execution Flow
 - Pipelines are executed by agents on deployment nodes
 - Control plane sends pipeline definition (specific version) to agent via WebSocket
 - Control plane monitors pipeline execution status in real-time
+- For each component in the pipeline:
+    1. Agent pulls the plugin Docker image (if not already cached)
+    2. Agent prepares JSON input with parameters and secrets
+    3. Agent executes plugin container: `docker run --rm plugin-image < input.json > output.json`
+    4. Agent captures stdout, stderr, and exit code
+    5. Agent parses JSON output and checks exit code
+    6. If successful, proceed to next component
+    7. If failed, trigger rollback
 - Pipeline executes components sequentially in defined order
 - If any component fails, the entire pipeline fails
 - Failed deployments trigger automatic rollback by the agent
 - Users can retry failed deployments through the UI (uses latest pipeline version)
+
+### Plugin Execution Environment
+- Plugins run in isolated Docker containers
+- Plugins have no access to agent internals or other deployments
+- Plugins can be configured with resource limits (CPU/RAM per execution)
+- Plugin containers are ephemeral (removed after execution)
+- Plugin execution logs are captured and sent to control plane for user visibility
+- Plugins can access deployment network if needed (configured per plugin)
 
 ### Failure Handling
 - Component failure = pipeline failure
@@ -465,16 +581,19 @@ When creating a service, admins specify:
 - Agents ensure cleanup of partial deployments
 - Error details are displayed to all users (admins and regular users see the same errors)
 - **External Service Failures**: If container registry is unreachable or external service fails during pipeline execution, deployment fails
-- **No External Databases**: External database dependencies are not supported in pipelines (or will cause pipeline failure)
+- **Plugin Failures**: If plugin container crashes or returns non-zero exit code, deployment fails
+- **Plugin Timeout**: Plugins can be configured with execution timeout (default: 5 minutes)
 
 ## Secrets and Configuration Management
 
 ### Secret Injection
 - Secrets are managed and defined in the pipeline configuration
-- Pipeline specifies how secrets are injected (environment variables, Vault components, etc.)
+- Pipeline specifies how secrets are injected into plugin containers
+- Secrets are passed to plugins via JSON input (encrypted in transit)
 - Admins configure secret sources and injection methods per project
-- Secrets are stored in control plane database
+- Secrets are stored in control plane database (encrypted at rest)
 - Agents retrieve secrets from control plane when executing pipelines
+- Secrets are never persisted on agent nodes
 
 ### Configuration Override
 - Users can only override service versions when creating deployments (if tag mode is "selectable")
@@ -484,6 +603,7 @@ When creating a service, admins specify:
     - Database connection strings
     - Component parameters
     - Resource limits
+    - Plugin parameters
 
 ## Deployment Lifecycle
 
@@ -531,6 +651,7 @@ When creating a service, admins specify:
 - UI provides access to logs from all services within a deployment
 - Control plane queries agents for service logs
 - Logs are available to all users with access to the deployment (based on team permissions)
+- Plugin execution logs are captured and displayed during pipeline execution
 
 ### Metrics and Health
 - Health checks are visible through the UI
@@ -583,6 +704,7 @@ When creating a service, admins specify:
 - Users should optimize container images for reasonable pull times
 - No specific timeout enforced, but extremely long operations may cause issues
 - **Progress Indication**: Real-time pipeline status and logs visible in UI during long operations
+- **Plugin Timeouts**: Individual plugins can be configured with execution timeouts (default: 5 minutes)
 
 ### Concurrent Deployments
 - Multiple users can deploy the same project simultaneously
@@ -686,6 +808,7 @@ When creating a service, admins specify:
     - Comprehensive audit logs with detailed "who did what when"
 - **Deployment Templates**: DevOps engineers can create templates for common configurations
 - **Disaster Recovery**: Comprehensive backup and restore procedures for environments and deployments
+- **JavaScript Plugins**: Optional lightweight scripting plugins for simple transformations and validations
 
 ## Technical Architecture Components
 
@@ -710,15 +833,18 @@ When creating a service, admins specify:
 - Maintain internal state of local deployments
 - Execute pipelines locally
 - Monitor and cleanup resources
-- Maintain persistent WebSocket connection to control plane
+- Accept and maintain persistent WebSocket connections from control plane
+- Expose WebSocket endpoint for control plane connections
 - **Image Management**: Pull container images from configured registries using provided credentials
-- **Authentication**: Validate incoming WebSocket connection using configured token
-- **Certificate Management**: Generate and manage self-signed TLS certificate for secure WebSocket connection
+- **Plugin Execution**: Pull and execute plugin containers during pipeline execution
+- **Authentication**: Validate incoming WebSocket connections using configured token
+- **Certificate Management**: Generate and manage self-signed TLS certificate for secure WebSocket connections
 - **Installation**: Deployed as Docker containers with generated tokens from admin UI
 - **Version Compatibility**: Must match control plane version; mixed versions not supported
 - **Health Reporting**: Connection status indicates agent health (online/offline)
 - **State Synchronization**: Receive full state from control plane on reconnection
-- **Plugin Safety**: Execute plugins in isolated try/catch blocks to prevent crashes
+- **Plugin Safety**: Execute plugins in isolated Docker containers with proper error handling
+- **Network Model**: Agent exposes WebSocket endpoint; control plane connects as client; agent does not need control plane URL
 
 ### Ingress Service
 - Central routing for all deployment services
@@ -733,15 +859,17 @@ When creating a service, admins specify:
 - Automatically removes offline nodes from routing table
 
 ### Plugin System
-- Extensible component registration
-- Component discovery and execution
+- Docker container-based plugin architecture
+- Language-agnostic component execution
 - Used by agents to run pipeline components
-- **Packaging Format**: NuGet packages
-- **Repository**: Internal or external NuGet repository
+- **Packaging Format**: Docker images
+- **Repository**: Container registries (same as used for services)
 - **Notification**: Control plane notifies agents via WebSocket when plugin configuration changes
-- **Distribution**: Agents download plugins from configured repository on demand
-- **Versioning**: Abstract versioned API between control plane/agents and plugins
-- **Safety**: Plugins run in isolated environment with error handling
+- **Distribution**: Agents pull plugin images from configured container registries
+- **Versioning**: Plugin versions managed through Docker image tags
+- **Isolation**: Each plugin execution runs in isolated container
+- **Contract**: Simple stdin/stdout JSON interface
+- **Developer Freedom**: Plugins can use any language, libraries, or tools packaged in the container
 
 ### UI
 - Web interface for users and admins
@@ -752,7 +880,7 @@ When creating a service, admins specify:
     - Configure container registries (add/remove registries, manage credentials)
     - Define services with tag modes and patterns
     - Create and edit pipelines using visual node-based editor (creates new version on save)
-    - Configure plugins (add/remove NuGet packages)
+    - Configure plugins (specify Docker images from container registries)
     - Manage nodes and environments (including ingress subdomain configuration and DNS setup)
     - Create and manage teams
     - Assign team permissions to projects/environments
