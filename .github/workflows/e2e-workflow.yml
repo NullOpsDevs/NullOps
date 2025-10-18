@@ -15,4 +15,4 @@ jobs:
       
       - name: Run E2E tests
         working-directory: src
-        run: dotnet run -c Release --project src/NullOps.Tests.E2ESuite/NullOps.Tests.E2ESuite.csproj
+        run: dotnet run -c Release --project NullOps.Tests.E2ESuite/NullOps.Tests.E2ESuite.csproj
