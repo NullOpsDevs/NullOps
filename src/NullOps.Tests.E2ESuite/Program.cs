@@ -337,12 +337,20 @@ public static class Program
 
     private static async Task<string?> SetupAPIAsync(DockerClient client, string databaseContainerName)
     {
+        var isGitHubActions = Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true";
+
+        var containerName = $"nops-e2e-api-{Guid.NewGuid():N}";
+        
+        var baseUrl = isGitHubActions 
+            ? $"http://{containerName}:7000"
+            : $"http://localhost:{APIPort}";
+        
         AnsiConsole.MarkupLine("[underline]Setting up API...[/]");
         
         var container = await client.Containers.CreateContainerAsync(new CreateContainerParameters
         {
             Image = LocallyBuiltNullOpsImageName,
-            Name = $"nops-e2e-api-{Guid.NewGuid():N}",
+            Name = containerName,
             Labels = new Dictionary<string, string>
             {
                 [TestDockerLabel] = "true"
@@ -389,7 +397,7 @@ public static class Program
             var request = new HttpRequestMessage
             {
                 Method = HttpMethod.Get,
-                RequestUri = new Uri($"http://localhost:{APIPort}/api/v1/health/ping")
+                RequestUri = new Uri($"http://{baseUrl}/api/v1/health/ping")
             };
 
             try
