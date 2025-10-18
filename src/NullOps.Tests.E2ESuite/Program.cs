@@ -403,7 +403,12 @@ public static class Program
                     AnsiConsole.MarkupLine("[green underline]API is healthy![/]");
                     return container.ID;
                 }
-            } catch { /* ignored */ }
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine("[yellow underline]API is not healthy yet. Exception:[/]");
+                AnsiConsole.WriteException(ex);
+            }
         }
         
         AnsiConsole.MarkupLine("[red underline]API is not healthy after 30 seconds. Something went wrong. Check logs.[/]");
