@@ -23,5 +23,4 @@ jobs:
           -e MODULE_INSTANCE=Writerside/main
           -e OUTPUT_DIR=/opt/sources/output
           -e RUNNER=other
-          -e PDF=PDF.xml
           jetbrains/writerside-builder:${{ env.WRITERSIDE_VERSION }}
