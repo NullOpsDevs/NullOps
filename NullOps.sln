@@ -11,6 +11,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Containers", "Containers", 
 		E2ESuite.Dockerfile = E2ESuite.Dockerfile
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CI/CD", "CI/CD", "{D85D8EEF-8E18-4DD0-B2EF-26236091D32E}"
+	ProjectSection(SolutionItems) = preProject
+		.circleci\config-docs.yml = .circleci\config-docs.yml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

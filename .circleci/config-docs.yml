@@ -1,0 +1,39 @@
+version: 2.1
+
+jobs:
+  build-writerside-docs:
+    docker:
+      - image: cimg/base:current
+
+    steps:
+      - checkout
+
+      - setup_remote_docker:
+          docker_layer_caching: true
+
+      - run:
+          name: "Build Writerside Documentation"
+          command: |
+            docker run --rm \
+              -v $(pwd)/docs:/opt/sources \
+              -e INSTANCE=n \
+              -e RUNNER=other \
+              jetbrains/writerside-builder:2025.04.8412 \
+              /bin/bash -c "export DISPLAY=:99 && Xvfb :99 & /opt/builder/bin/helpbuilderinspect -source-dir /opt/sources -product /opt/sources/n.tree --runner other -output-dir /opt/sources/artifacts"
+
+      - run:
+          name: "Extract build artifacts"
+          command: |
+            docker run --rm \
+              -v $(pwd)/docs:/opt/sources \
+              alpine:latest \
+              sh -c "ls -la /opt/sources/artifacts || echo 'Artifacts directory not found'"
+
+      - store_artifacts:
+          path: docs/artifacts
+          destination: documentation
+
+workflows:
+  build-documentation:
+    jobs:
+      - build-writerside-docs
