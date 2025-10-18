@@ -11,3 +11,4 @@ WORKDIR /app
 COPY --from=build /build/NullOps/bin/Release/net9.0/publish /app
 RUN chmod +x /app/NullOps
 ENTRYPOINT exec /app/NullOps
+EXPOSE 7000
