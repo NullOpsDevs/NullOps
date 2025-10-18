@@ -1,0 +1,28 @@
+name: Build a deploy docs
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+
+env:
+  WRITERSIDE_VERSION: "2025.04.8412"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: jetbrains/writerside-builder:{{ env.WRITERSIDE_VERSION }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build docs
+        run:
+          - >
+            docker run --rm -v ${{ github.workspace }}:/opt/sources \
+            -e SOURCE_DIR=/opt/sources \
+            -e MODULE_INSTANCE=Writerside/n \
+            -e OUTPUT_DIR=/opt/sources/output \
+            -e RUNNER=other \
+            -e PDF=PDF.xml \
+            jetbrains/writerside-builder:{{ env.WRITERSIDE_VERSION }}
