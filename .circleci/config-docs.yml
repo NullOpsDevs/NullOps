@@ -18,8 +18,7 @@ jobs:
               -v $(pwd)/docs:/opt/sources \
               -e INSTANCE=n \
               -e RUNNER=other \
-              jetbrains/writerside-builder:2025.04.8412 \
-              /bin/bash -c "export DISPLAY=:99 && Xvfb :99 & /opt/builder/bin/helpbuilderinspect -source-dir /opt/sources -product /opt/sources/n.tree --runner other -output-dir /opt/sources/artifacts"
+              jetbrains/writerside-builder:2025.04.8412
 
       - run:
           name: "Extract build artifacts"
