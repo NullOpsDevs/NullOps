@@ -2,6 +2,9 @@ version: 2.1
 
 jobs:
   build-writerside-docs:
+    machine: true
+    resource_class: nullops/builders
+    
     docker:
       - image: cimg/base:current
 
