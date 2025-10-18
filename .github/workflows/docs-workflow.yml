@@ -5,6 +5,7 @@ on:
       - main
     paths:
       - 'docs/**'
+      - '.github/workflows/docs-workflow.yml'
 
 env:
   WRITERSIDE_VERSION: "2025.04.8412"
