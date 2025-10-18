@@ -2,18 +2,13 @@ version: 2.1
 
 jobs:
   build-writerside-docs:
-    machine: true
-    resource_class: nullops/builders
-    
     docker:
       - image: cimg/base:current
-
+    resource_class: nullops/builders
     steps:
       - checkout
-
       - setup_remote_docker:
           docker_layer_caching: true
-
       - run:
           name: "Build Writerside Documentation"
           command: |
@@ -22,7 +17,6 @@ jobs:
               -e INSTANCE=n \
               -e RUNNER=other \
               jetbrains/writerside-builder:2025.04.8412
-
       - run:
           name: "Extract build artifacts"
           command: |
@@ -30,7 +24,6 @@ jobs:
               -v $(pwd)/docs:/opt/sources \
               alpine:latest \
               sh -c "ls -la /opt/sources/artifacts || echo 'Artifacts directory not found'"
-
       - store_artifacts:
           path: docs/artifacts
           destination: documentation
