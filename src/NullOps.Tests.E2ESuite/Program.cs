@@ -406,7 +406,7 @@ public static class Program
             {
                 AnsiConsole.MarkupLine("[yellow underline]API is not healthy yet. Exception:[/]");
                 AnsiConsole.WriteException(ex);
-                await Task.Delay(TimeSpan.FromSeconds(1), cancellationTokenSrc.Token);
+                await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None);
             }
         }
 
