@@ -339,6 +339,21 @@ public static class Program
 
         AnsiConsole.MarkupLine("[underline]Setting up API...[/]");
 
+        var portBindings = new Dictionary<string, IList<PortBinding>>
+        {
+            ["7000/tcp"] = new List<PortBinding>
+            {
+                new()
+                {
+                    HostIP = "127.0.0.1",
+                    HostPort = APIPort
+                }
+            }
+        };
+    
+        // DEBUG: Print what we're trying to bind
+        AnsiConsole.MarkupLine($"[yellow]Attempting to bind container port 7000 to host {portBindings["7000/tcp"][0].HostIP}:{portBindings["7000/tcp"][0].HostPort}[/]");
+        
         var container = await client.Containers.CreateContainerAsync(new CreateContainerParameters
         {
             Image = LocallyBuiltNullOpsImageName,
@@ -357,20 +372,19 @@ public static class Program
             {
                 AutoRemove = false,
                 NetworkMode = E2ENetworkName,
-                PortBindings = new Dictionary<string, IList<PortBinding>>
-                {
-                    ["7000/tcp"] = new List<PortBinding>
-                    {
-                        new()
-                        {
-                            HostIP = "0.0.0.0",
-                            HostPort = APIPort
-                        }
-                    }
-                }
+                PortBindings = portBindings
             }
         });
 
+        var inspectAfterCreate = await client.Containers.InspectContainerAsync(container.ID);
+        var actualPorts = inspectAfterCreate.HostConfig.PortBindings;
+    
+        AnsiConsole.MarkupLine("[yellow]Docker created port bindings:[/]");
+        foreach (var port in actualPorts)
+        {
+            AnsiConsole.MarkupLine($"  {port.Key} -> {string.Join(", ", port.Value.Select(b => $"{b.HostIP}:{b.HostPort}"))}");
+        }
+        
         var started = await client.Containers.StartContainerAsync(container.ID, new ContainerStartParameters());
 
         if (!started)
