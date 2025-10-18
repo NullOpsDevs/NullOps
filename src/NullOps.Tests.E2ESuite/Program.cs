@@ -20,7 +20,7 @@ public static class Program
     private const string DatabasePort = "14650";
     private const string DatabaseName = "nullops";
     private const string LocallyBuiltNullOpsImageName = "e2ebuild-nullops:latest";
-    private const string APIPort = "18080";
+    private const string APIPort = "14651";
     private const string BaseUrl = $"http://localhost:{APIPort}";
 
     public static async Task<int> Main()
@@ -365,7 +365,7 @@ public static class Program
                     {
                         new()
                         {
-                            HostIP = "127.0.0.1",
+                            HostIP = "0.0.0.0",
                             HostPort = APIPort
                         }
                     }
@@ -408,6 +408,7 @@ public static class Program
             {
                 AnsiConsole.MarkupLine("[yellow underline]API is not healthy yet. Exception:[/]");
                 AnsiConsole.WriteException(ex);
+                await Task.Delay(TimeSpan.FromSeconds(1), cancellationTokenSrc.Token);
             }
         }
         
