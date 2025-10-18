@@ -1,0 +1,17 @@
+name: E2E tests
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - '.github/workflows/e2e-workflow.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run E2E tests
+        run: dotnet run -c Release src/E2ETests/E2ETests.csproj
