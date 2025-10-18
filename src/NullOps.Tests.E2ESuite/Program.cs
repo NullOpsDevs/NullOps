@@ -20,7 +20,7 @@ public static class Program
     private const string DatabasePort = "14650";
     private const string DatabaseName = "nullops";
     private const string LocallyBuiltNullOpsImageName = "e2ebuild-nullops:latest";
-    private const string APIPort = "14651";
+    private const string APIPort = "18080";
     private const string BaseUrl = $"http://localhost:{APIPort}";
 
     public static async Task<int> Main()
