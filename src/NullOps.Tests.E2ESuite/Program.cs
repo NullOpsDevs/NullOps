@@ -421,7 +421,7 @@ public static class Program
                 Timestamps = false
             });
 
-        var logFileName = $"error-{DateTime.Now.Ticks}.log";
+        var logFileName = $"logs-{DateTime.Now.Ticks}.log";
         var logFile = File.Create(logFileName);
         var logFileWriter = new StreamWriter(logFile, Encoding.UTF8);
                 
