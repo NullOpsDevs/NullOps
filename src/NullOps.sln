@@ -6,9 +6,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NullOps.Tests.E2ESuite", "N
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Containers", "Containers", "{C89D7077-A713-441A-9AD9-EABB6FF3E763}"
 	ProjectSection(SolutionItems) = preProject
-		NullOps.Dockerfile = NullOps.Dockerfile
-		.dockerignore = .dockerignore
-		E2ESuite.Dockerfile = E2ESuite.Dockerfile
+		..\.dockerignore = ..\.dockerignore
+		..\E2ESuite.Dockerfile = ..\E2ESuite.Dockerfile
+		..\NullOps.Dockerfile = ..\NullOps.Dockerfile
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CI/CD", "CI/CD", "{D85D8EEF-8E18-4DD0-B2EF-26236091D32E}"
