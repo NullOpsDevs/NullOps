@@ -19,8 +19,8 @@ jobs:
       - name: Build docs
         run: >
           docker run --rm -v ${{ github.workspace }}:/opt/sources
-          -e SOURCE_DIR=/opt/sources
-          -e MODULE_INSTANCE=Writerside/n
+          -e SOURCE_DIR=/opt/sources/docs/
+          -e MODULE_INSTANCE=Writerside/main
           -e OUTPUT_DIR=/opt/sources/output
           -e RUNNER=other
           -e PDF=PDF.xml

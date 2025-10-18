@@ -1,4 +1,4 @@
-﻿# NullOps Project Architecture
+# NullOps Project Architecture
 
 ## Purpose of this project
 

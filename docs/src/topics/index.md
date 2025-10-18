@@ -1,3 +1,0 @@
-# Welcome
-
-Documentation goes here!
