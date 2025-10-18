@@ -382,7 +382,7 @@ public static class Program
         AnsiConsole.MarkupLine("[green underline]API started. Waiting for a healthcheck...[/]");
 
         var httpClient = new HttpClient();
-        var cancellationTokenSrc = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var cancellationTokenSrc = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
         while (!cancellationTokenSrc.IsCancellationRequested)
         {
@@ -434,7 +434,7 @@ public static class Program
         foreach (var c in runningContainers)
         {
             var ports = string.Join(", ", c.Ports.Select(p => $"{p.PrivatePort}->{p.PublicPort}"));
-            AnsiConsole.MarkupLine($"  - {c.Names[0]}: {c.Image} [{c.State}] Ports: {ports}");
+            AnsiConsole.MarkupLine($"  - {c.Names[0]}: {c.Image} {c.State} Ports: {ports}");
         }
 
         try
