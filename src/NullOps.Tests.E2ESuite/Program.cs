@@ -413,6 +413,8 @@ public static class Program
         }
         
         AnsiConsole.MarkupLine("[red underline]API is not healthy after 30 seconds. Something went wrong. Check logs.[/]");
+        await WriteLogsToFile(client, container.ID);
+        
         return null;
     }
 
