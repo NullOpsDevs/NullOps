@@ -34,3 +34,10 @@ jobs:
         with:
           name: dotnet-test-results
           path: ${{ github.workspace }}/TestResults
+
+      - name: Deploy results to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy "${{ github.workspace }}/TestResults" --project-name=nullops-ut --branch=${{ github.ref_name }}-${{ github.sha }} --commit-hash=${{ github.sha }}
