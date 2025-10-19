@@ -10,14 +10,15 @@ public class PipelinePartContext
     
     public PipelinePart Part { get; init; }
     
-    public RegisteredPipelineComponent? RootComponent { get; set; }
+    public PipelineComponentConfiguration? RootComponent { get; set; }
     
     public RegisteredPipelineComponent[] KnownComponents { get; init; }
     public FrozenDictionary<string, RegisteredPipelineComponent> KnownComponentsMap { get; init; }
     
     public PipelineComponentConfiguration[] ComponentsConfigurations { get; init; }
     public FrozenDictionary<string, PipelineComponentConfiguration> ComponentsConfigurationsMap { get; init; }
-    
+    public FrozenDictionary<string, PipelineComponentConfiguration> ComponentsConfigurationsByStepId { get; private set; }
+
     public HashSet<string> ReferencedComponentIds { get; init; }
 
     public bool HasErrors => ValidationEntries.Any(x => x.IsError);
@@ -42,5 +43,10 @@ public class PipelinePartContext
             Message = message,
             IsError = true
         });   
+    }
+
+    public void PostValidationConfigure()
+    {
+        ComponentsConfigurationsByStepId = ComponentsConfigurations.ToFrozenDictionary(x => x.StepId);
     }
 }
