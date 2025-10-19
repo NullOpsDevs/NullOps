@@ -243,7 +243,7 @@ public static class Program
         
         var solutionRoot = Directory.GetCurrentDirectory();
 
-        while (!File.Exists(Path.Combine(solutionRoot, "NullOps.sln")))
+        while (!File.Exists(Path.Combine(solutionRoot, "NullOps.slnx")))
         {
             solutionRoot = Path.GetFullPath(Path.Combine(solutionRoot, ".."));
         }
