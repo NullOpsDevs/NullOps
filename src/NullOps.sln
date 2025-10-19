@@ -17,6 +17,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CI/CD", "CI/CD", "{D85D8EEF
 		..\.github\workflows\e2e-workflow.yml = ..\.github\workflows\e2e-workflow.yml
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NullOps.PipelinesExperiment", "NullOps.PipelinesExperiment\NullOps.PipelinesExperiment.csproj", "{BE79F613-2C28-4FE7-9E93-DABED06AD2A4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NullOps.PipelinesExperiment.Tests", "NullOps.PipelinesExperiment.Tests\NullOps.PipelinesExperiment.Tests.csproj", "{540341D4-9F81-49D4-A760-C4A9214BEF32}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CI/CD", "CI/CD", "{87DD5164-E8EB-45F0-9CD1-CB54764DABDC}"
+	ProjectSection(SolutionItems) = preProject
+		.circleci\config.yml = .circleci\config.yml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -31,5 +40,13 @@ Global
 		{02D1E593-7F99-4B63-8473-D1E686921ADA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{02D1E593-7F99-4B63-8473-D1E686921ADA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{02D1E593-7F99-4B63-8473-D1E686921ADA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BE79F613-2C28-4FE7-9E93-DABED06AD2A4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BE79F613-2C28-4FE7-9E93-DABED06AD2A4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BE79F613-2C28-4FE7-9E93-DABED06AD2A4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BE79F613-2C28-4FE7-9E93-DABED06AD2A4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{540341D4-9F81-49D4-A760-C4A9214BEF32}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{540341D4-9F81-49D4-A760-C4A9214BEF32}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{540341D4-9F81-49D4-A760-C4A9214BEF32}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{540341D4-9F81-49D4-A760-C4A9214BEF32}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
