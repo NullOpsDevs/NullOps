@@ -1,0 +1,16 @@
+﻿<Solution>
+  <Folder Name="/CI/CD/">
+    <File Path="..\.github\workflows\docs-workflow.yml" />
+    <File Path="..\.github\workflows\e2e-workflow.yml" />
+    <File Path="..\.github\workflows\unit-tests-workflow.yml" />
+  </Folder>
+  <Folder Name="/Containers/">
+    <File Path=".dockerignore" />
+    <File Path="E2ESuite.Dockerfile" />
+    <File Path="NullOps.Dockerfile" />
+  </Folder>
+  <Project Path="NullOps.PipelinesExperiment.Tests\NullOps.PipelinesExperiment.Tests.csproj" />
+  <Project Path="NullOps.PipelinesExperiment\NullOps.PipelinesExperiment.csproj" />
+  <Project Path="NullOps.Tests.E2ESuite\NullOps.Tests.E2ESuite.csproj" />
+  <Project Path="NullOps\NullOps.csproj" />
+</Solution>
