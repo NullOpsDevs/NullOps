@@ -10,6 +10,8 @@
     <File Path="NullOps.Dockerfile" />
   </Folder>
   <Project Path="NullOps.PipelinesExperiment.Tests\NullOps.PipelinesExperiment.Tests.csproj" />
+  <Project Path="NullOps.PipelinesExperimentV2.Tests\NullOps.PipelinesExperimentV2.Tests.csproj" Type="Classic C#" />
+  <Project Path="NullOps.PipelinesExperimentV2\NullOps.PipelinesExperimentV2.csproj" Type="Classic C#" />
   <Project Path="NullOps.PipelinesExperiment\NullOps.PipelinesExperiment.csproj" />
   <Project Path="NullOps.Tests.E2ESuite\NullOps.Tests.E2ESuite.csproj" />
   <Project Path="NullOps\NullOps.csproj" />
