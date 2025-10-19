@@ -25,8 +25,8 @@ jobs:
       - name: Generate HTML report
         if: always()
         run: |
-          dotnet tool install -g dotnet-reportgenerator-globaltool
-          reportgenerator -reports:"${{ github.workspace }}/TestResults/*.trx" -targetdir:"${{ github.workspace }}/TestResults/" -reporttypes:Html_Dark,Markdown
+          dotnet tool install --global LiquidTestReports.Cli --version 2.0.0-beta.2
+          dotnet liquid --inputs "File=${{ github.workspace }}/TestResults/*.trx;Format=Trx" --output-file "${{ github.workspace }}/TestResults/TestReport.md" --title "E2E Test Results"
 
       - name: Upload dotnet test results
         if: always()
@@ -34,10 +34,7 @@ jobs:
         with:
           name: dotnet-test-results
           path: ${{ github.workspace }}/TestResults
-
-      - name: Deploy results to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy "${{ github.workspace }}/TestResults" --project-name=nullops-ut --branch=${{ github.ref_name }}-${{ github.sha }} --commit-hash=${{ github.sha }}
+          
+      - name: Add to job summary
+        if: always()
+        run: cat ${{ github.workspace }}/TestResults/TestReport.md >> $GITHUB_STEP_SUMMARY
