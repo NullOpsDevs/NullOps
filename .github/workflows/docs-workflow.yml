@@ -35,4 +35,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy deploy --project-name=nullops --branch=main
+          command: pages deploy deploy --project-name=nullops-ut --branch=${{ github.ref_name }}-${{ github.sha }} --commit-hash=${{ github.sha }}
