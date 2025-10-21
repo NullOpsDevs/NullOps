@@ -26,7 +26,15 @@ jobs:
         if: always()
         run: |
           dotnet tool install --global LiquidTestReports.Cli --version 2.0.0-beta.2
-          liquid --inputs "File=${{ github.workspace }}/TestResults/**/*.trx;Format=Trx" --output-file "${{ github.workspace }}/TestResults/TestReport.md" --title "Unit test results"
+          
+          INPUTS=""
+          for trx_file in "${{ github.workspace }}/TestResults"/*.trx; do
+            if [ -f "$trx_file" ]; then
+              INPUTS="$INPUTS --inputs \"File=$trx_file;Format=Trx\""
+            fi
+          done
+          
+          eval "liquid $INPUTS --output-file \"${{ github.workspace }}/TestResults/TestReport.md\" --title \"Unit test results\""
 
       - name: Upload dotnet test results
         if: always()
