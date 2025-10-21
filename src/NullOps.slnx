@@ -1,5 +1,5 @@
 ﻿<Solution>
-  <Folder Name="/CI/CD/">
+  <Folder Name="/CI-CD/">
     <File Path="..\.github\workflows\docs-workflow.yml" />
     <File Path="..\.github\workflows\e2e-workflow.yml" />
     <File Path="..\.github\workflows\unit-tests-workflow.yml" />
