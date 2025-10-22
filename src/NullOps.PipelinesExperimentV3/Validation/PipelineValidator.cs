@@ -10,7 +10,7 @@ public static class PipelineValidator
         IPipelineValidationReport Report,
         ComponentRegistry ComponentRegistry,
         PipelineConfiguration PipelineConfiguration,
-        List<Guid> DanglingSteps);
+        HashSet<Guid> DanglingSteps);
     
     public static PipelineValidationResult Validate(
         ComponentRegistry registeredPipelineComponents,
@@ -46,9 +46,21 @@ public static class PipelineValidator
         // 1.6. Validating that there are no dangling branches
         Check_for_dangling_branches(context);
         
+        // =================
+        // 2. Validating component configuration
+        // =================
+
+        Check_that_all_steps_provide_required_parameters(context);
+
+        // Has errors? Return result without mapping to Pipeline
+        if (result.HasErrors)
+            return result;
+        
+        result.Pipeline = BuildPipeline(context);
+        
         return result;
     }
-    
+
     private static bool Check_that_all_step_ids_are_unique(PipelineValidationContext context)
     {
         var allSteps = context.PipelineConfiguration.Steps;
@@ -238,5 +250,49 @@ public static class PipelineValidator
         }
 
         return allStepIds.Except(reachable).ToArray();
+    }
+    
+    private static void Check_that_all_steps_provide_required_parameters(PipelineValidationContext context)
+    {
+        var componentRegistry = context.ComponentRegistry;
+        var steps = context.PipelineConfiguration.Steps;
+        var requiredParametersByComponent = componentRegistry.GetComponents()
+            .ToDictionary(
+                x => x.ComponentId,
+                x => x.Parameters
+                    .Where(p => p.Required)
+                    .Select(p => p.Name)
+                    .ToArray());
+
+        foreach (var step in steps)
+        {
+            var requiredParameters = requiredParametersByComponent[step.ComponentId];
+
+            if (requiredParameters.Any(requiredParameter => !step.Parameters.ContainsKey(requiredParameter)))
+            {
+                context.Report.AddError(step.StepId, PipelineValidationEntryMessage.MissingParameters);
+            }
+        }
+    }
+    
+    private static Pipeline BuildPipeline(PipelineValidationContext context)
+    {
+        var stepsWithoutDanglingNodes = context.PipelineConfiguration.Steps
+            .Where(step => !context.DanglingSteps.Contains(step.StepId))
+            .ToArray();
+
+        var mappedSteps = stepsWithoutDanglingNodes
+            .Select(step => new PipelineStep
+            {
+                StepId = step.StepId,
+                ComponentId = step.ComponentId,
+                Parameters = step.Parameters,
+                Dependencies = step.Dependencies
+            }).ToArray();
+        
+        return new Pipeline
+        {
+            Steps = mappedSteps
+        };
     }
 }

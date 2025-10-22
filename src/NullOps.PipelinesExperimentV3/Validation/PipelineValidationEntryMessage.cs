@@ -8,5 +8,6 @@ public enum PipelineValidationEntryMessage
     CyclicDependencyDetected,
     DanglingStep,
     RootStepMustBeUnique,
-    RootStepMustNotHaveDependencies
+    RootStepMustNotHaveDependencies,
+    MissingParameters
 }

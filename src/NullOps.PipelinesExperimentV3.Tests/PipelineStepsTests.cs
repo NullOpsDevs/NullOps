@@ -7,7 +7,11 @@ namespace NullOps.PipelinesExperimentV3.Tests;
 public class PipelineStepsTests
 {
     private const string StartEventName = "start";
-    
+    private const string TestComponentName = "test";
+    private const string ComponentWithParamsName = "component-with-params";
+    private const string ComponentWithOptionalParamsName = "component-with-optional-params";
+    private const string ComponentWithMultipleParamsName = "component-with-multiple-params";
+
     [Test]
     public void Returns_validation_error_on_duplicating_step_ids()
     {
@@ -60,7 +64,7 @@ public class PipelineStepsTests
     {
         var componentRegistry = BuildComponentRegistry();
         var startEventId = componentRegistry.GetComponent(StartEventName)!.ComponentId;
-        var testComponentId = componentRegistry.GetComponent("test")!.ComponentId;
+        var testComponentId = componentRegistry.GetComponent(TestComponentName)!.ComponentId;
 
         var nonExistentStepId = Guid.NewGuid();
 
@@ -95,7 +99,7 @@ public class PipelineStepsTests
     {
         var componentRegistry = BuildComponentRegistry();
         var startEventId = componentRegistry.GetComponent(StartEventName)!.ComponentId;
-        var testComponentId = componentRegistry.GetComponent("test")!.ComponentId;
+        var testComponentId = componentRegistry.GetComponent(TestComponentName)!.ComponentId;
 
         var nonExistentStepId1 = Guid.NewGuid();
         var nonExistentStepId2 = Guid.NewGuid();
@@ -154,7 +158,7 @@ public class PipelineStepsTests
     {
         var componentRegistry = BuildComponentRegistry();
         var startEventId = componentRegistry.GetComponent(StartEventName)!.ComponentId;
-        var testComponentId = componentRegistry.GetComponent("test")!.ComponentId;
+        var testComponentId = componentRegistry.GetComponent(TestComponentName)!.ComponentId;
 
         var dependencyStepId = Guid.NewGuid();
 
@@ -188,7 +192,7 @@ public class PipelineStepsTests
     public void Returns_validation_error_when_cyclic_dependency_detected()
     {
         var componentRegistry = BuildComponentRegistry();
-        var testComponentId = componentRegistry.GetComponent("test")!.ComponentId;
+        var testComponentId = componentRegistry.GetComponent(TestComponentName)!.ComponentId;
         var startEventId = componentRegistry.GetComponent(StartEventName)!.ComponentId;
 
         var step1Id = Guid.NewGuid();
@@ -238,7 +242,7 @@ public class PipelineStepsTests
     {
         var componentRegistry = BuildComponentRegistry();
         var startEventId = componentRegistry.GetComponent(StartEventName)!.ComponentId;
-        var testComponentId = componentRegistry.GetComponent("test")!.ComponentId;
+        var testComponentId = componentRegistry.GetComponent(TestComponentName)!.ComponentId;
 
         var startStepId = Guid.NewGuid();
         var connectedStepId = Guid.NewGuid();
@@ -277,7 +281,7 @@ public class PipelineStepsTests
 
         var result = PipelineValidator.Validate(componentRegistry, pipeline);
 
-        Assert.That(result.Pipeline, Is.Null);
+        Assert.That(result.Pipeline, Is.Not.Null);
         Assert.That(result.HasWarnings, Is.True);
         Assert.That(result.ValidationEntries, Has.Count.EqualTo(2));
         
@@ -298,7 +302,7 @@ public class PipelineStepsTests
     {
         var componentRegistry = BuildComponentRegistry();
         var startEventId = componentRegistry.GetComponent(StartEventName)!.ComponentId;
-        var testComponentId = componentRegistry.GetComponent("test")!.ComponentId;
+        var testComponentId = componentRegistry.GetComponent(TestComponentName)!.ComponentId;
 
         var step1Id = Guid.NewGuid();
         var step2Id = Guid.NewGuid();
@@ -335,6 +339,154 @@ public class PipelineStepsTests
         Assert.That(result.ValidationEntries, Is.Empty);
     }
 
+    [Test]
+    public void Returns_validation_error_when_step_missing_required_parameter()
+    {
+        var componentRegistry = BuildComponentRegistry();
+        var startEventId = componentRegistry.GetComponent(StartEventName)!.ComponentId;
+        var componentWithParamsId = componentRegistry.GetComponent(ComponentWithParamsName)!.ComponentId;
+
+        var startStepId = Guid.NewGuid();
+
+        var pipeline = new PipelineConfiguration
+        {
+            Steps = [
+                new PipelineStepConfiguration
+                {
+                    StepId = startStepId,
+                    ComponentId = startEventId,
+                    Dependencies = [],
+                    Parameters = new Dictionary<string, string>()
+                },
+                new PipelineStepConfiguration
+                {
+                    StepId = Guid.NewGuid(),
+                    ComponentId = componentWithParamsId,
+                    Dependencies = [startStepId],
+                    Parameters = new Dictionary<string, string>() // Missing requiredParam
+                }
+            ]
+        };
+
+        var result = PipelineValidator.Validate(componentRegistry, pipeline);
+
+        Assert.That(result.HasErrors, Is.True);
+        Assert.That(result.ValidationEntries.Any(e => e.Message == PipelineValidationEntryMessage.MissingParameters), Is.True);
+    }
+
+    [Test]
+    public void Validates_successfully_when_step_provides_all_required_parameters()
+    {
+        var componentRegistry = BuildComponentRegistry();
+        var startEventId = componentRegistry.GetComponent(StartEventName)!.ComponentId;
+        var componentWithParamsId = componentRegistry.GetComponent(ComponentWithParamsName)!.ComponentId;
+
+        var startStepId = Guid.NewGuid();
+
+        var pipeline = new PipelineConfiguration
+        {
+            Steps = [
+                new PipelineStepConfiguration
+                {
+                    StepId = startStepId,
+                    ComponentId = startEventId,
+                    Dependencies = [],
+                    Parameters = new Dictionary<string, string>()
+                },
+                new PipelineStepConfiguration
+                {
+                    StepId = Guid.NewGuid(),
+                    ComponentId = componentWithParamsId,
+                    Dependencies = [startStepId],
+                    Parameters = new Dictionary<string, string>
+                    {
+                        { "requiredParam", "value" }
+                        // optionalParam is not required, so it's OK to omit
+                    }
+                }
+            ]
+        };
+
+        var result = PipelineValidator.Validate(componentRegistry, pipeline);
+
+        Assert.That(result.HasErrors, Is.False);
+        Assert.That(result.HasWarnings, Is.False);
+    }
+
+    [Test]
+    public void Validates_successfully_when_component_has_no_required_parameters()
+    {
+        var componentRegistry = BuildComponentRegistry();
+        var startEventId = componentRegistry.GetComponent(StartEventName)!.ComponentId;
+        var componentWithOptionalParamsId = componentRegistry.GetComponent(ComponentWithOptionalParamsName)!.ComponentId;
+
+        var startStepId = Guid.NewGuid();
+
+        var pipeline = new PipelineConfiguration
+        {
+            Steps = [
+                new PipelineStepConfiguration
+                {
+                    StepId = startStepId,
+                    ComponentId = startEventId,
+                    Dependencies = [],
+                    Parameters = new Dictionary<string, string>()
+                },
+                new PipelineStepConfiguration
+                {
+                    StepId = Guid.NewGuid(),
+                    ComponentId = componentWithOptionalParamsId,
+                    Dependencies = [startStepId],
+                    Parameters = new Dictionary<string, string>() // No params provided, all are optional
+                }
+            ]
+        };
+
+        var result = PipelineValidator.Validate(componentRegistry, pipeline);
+
+        Assert.That(result.HasErrors, Is.False);
+        Assert.That(result.HasWarnings, Is.False);
+    }
+
+    [Test]
+    public void Returns_validation_error_when_step_missing_multiple_required_parameters()
+    {
+        var componentRegistry = BuildComponentRegistry();
+        var startEventId = componentRegistry.GetComponent(StartEventName)!.ComponentId;
+        var componentWithMultipleParamsId = componentRegistry.GetComponent(ComponentWithMultipleParamsName)!.ComponentId;
+
+        var startStepId = Guid.NewGuid();
+
+        var pipeline = new PipelineConfiguration
+        {
+            Steps = [
+                new PipelineStepConfiguration
+                {
+                    StepId = startStepId,
+                    ComponentId = startEventId,
+                    Dependencies = [],
+                    Parameters = new Dictionary<string, string>()
+                },
+                new PipelineStepConfiguration
+                {
+                    StepId = Guid.NewGuid(),
+                    ComponentId = componentWithMultipleParamsId,
+                    Dependencies = [startStepId],
+                    Parameters = new Dictionary<string, string>
+                    {
+                        { "requiredParam1", "value1" }
+                        // requiredParam2 is missing
+                    }
+                }
+            ]
+        };
+
+        var result = PipelineValidator.Validate(componentRegistry, pipeline);
+
+        Assert.That(result.HasErrors, Is.True);
+        Assert.That(result.ValidationEntries.Any(e => e.Message == PipelineValidationEntryMessage.MissingParameters), Is.True);
+    }
+
     private static ComponentRegistry BuildComponentRegistry()
     {
         var cr = new ComponentRegistry();
@@ -345,16 +497,86 @@ public class PipelineStepsTests
             Type = RegisteredPipelineComponentType.Internal,
             Name = StartEventName,
             Description = string.Empty,
-            IsSystemEvent = true
+            IsSystemEvent = true,
+            Parameters = []
         });
 
         cr.AddComponent(new RegisteredPipelineComponent
         {
             ComponentId = Guid.NewGuid(),
             Type = RegisteredPipelineComponentType.Internal,
-            Name = "test",
+            Name = TestComponentName,
             Description = string.Empty,
-            IsSystemEvent = false
+            IsSystemEvent = false,
+            Parameters = []
+        });
+
+        cr.AddComponent(new RegisteredPipelineComponent
+        {
+            ComponentId = Guid.NewGuid(),
+            Type = RegisteredPipelineComponentType.Internal,
+            Name = ComponentWithParamsName,
+            Description = string.Empty,
+            IsSystemEvent = false,
+            Parameters = [
+                new RegisteredPipelineComponentParameter
+                {
+                    Name = "requiredParam",
+                    Required = true
+                },
+                new RegisteredPipelineComponentParameter
+                {
+                    Name = "optionalParam",
+                    Required = false
+                }
+            ]
+        });
+
+        cr.AddComponent(new RegisteredPipelineComponent
+        {
+            ComponentId = Guid.NewGuid(),
+            Type = RegisteredPipelineComponentType.Internal,
+            Name = ComponentWithOptionalParamsName,
+            Description = string.Empty,
+            IsSystemEvent = false,
+            Parameters = [
+                new RegisteredPipelineComponentParameter
+                {
+                    Name = "optionalParam1",
+                    Required = false
+                },
+                new RegisteredPipelineComponentParameter
+                {
+                    Name = "optionalParam2",
+                    Required = false
+                }
+            ]
+        });
+
+        cr.AddComponent(new RegisteredPipelineComponent
+        {
+            ComponentId = Guid.NewGuid(),
+            Type = RegisteredPipelineComponentType.Internal,
+            Name = ComponentWithMultipleParamsName,
+            Description = string.Empty,
+            IsSystemEvent = false,
+            Parameters = [
+                new RegisteredPipelineComponentParameter
+                {
+                    Name = "requiredParam1",
+                    Required = true
+                },
+                new RegisteredPipelineComponentParameter
+                {
+                    Name = "requiredParam2",
+                    Required = true
+                },
+                new RegisteredPipelineComponentParameter
+                {
+                    Name = "optionalParam",
+                    Required = false
+                }
+            ]
         });
 
         return cr;

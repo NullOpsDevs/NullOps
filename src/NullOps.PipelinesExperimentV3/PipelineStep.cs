@@ -1,4 +1,6 @@
-﻿namespace NullOps.PipelinesExperimentV3;
+﻿using NullOps.PipelinesExperimentV3.Components;
+
+namespace NullOps.PipelinesExperimentV3;
 
 public class PipelineStep
 {
