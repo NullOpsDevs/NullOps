@@ -1,7 +1,7 @@
 # Logo and Branding
 
 Copyright (c) 2025 NullOps (0x25CBFC4F) \
-Logo designed by [Anastasia Hodanovich](https://www.behance.net/gallery/233717219/portfolio-graficheskogo-dizajnera)
+Logo designed by [Anastasia Khodanovich](https://www.behance.net/gallery/233717219/portfolio-graficheskogo-dizajnera)
 
 All Rights Reserved.
 
