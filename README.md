@@ -4,4 +4,4 @@
 
 ## Logo Attribution
 
-Logo designed by [Anastasia Hodanovich](https://www.behance.net/gallery/233717219/portfolio-graficheskogo-dizajnera). Branding restrictions apply. [Read more](BRANDING_LICENSE.md).
+Logo designed by [Anastasia Khodanovich](https://www.behance.net/gallery/233717219/portfolio-graficheskogo-dizajnera). Branding restrictions apply. [Read more](BRANDING_LICENSE.md).
