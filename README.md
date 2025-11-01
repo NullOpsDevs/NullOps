@@ -1,4 +1,4 @@
-# ![logo](branding/logo/icons/icon-512x512.png) NullOps Project
+# ![logo](/branding/logo/icons/icon-512x512.png) NullOps Project
 
 🚧 README is under construction.
 
